@@ -1,7 +1,7 @@
 {
     "name": "almadar-orb",
     "displayName": "Almadar Orbital Language",
-    "description": "Language support for .orb files — TypeScript-powered validation and S-expression highlighting",
+    "description": "Language support for .orb files — validation via orb-lsp and S-expression highlighting",
     "version": "1.0.0",
     "publisher": "almadar",
     "main": "./dist/extension.js",
