@@ -1,0 +1,9 @@
+{
+    "scopeName": "source.json",
+    "$comment": "Orbital .orb files use JSON syntax as their base. This grammar delegates to VSCode's built-in JSON grammar. S-expression highlighting is provided by the sexpr.injection.json injection grammar.",
+    "patterns": [
+        {
+            "include": "source.json"
+        }
+    ]
+}
