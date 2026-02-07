@@ -1,6 +1,35 @@
-; Orbital S-Expression Highlights for Zed
-; This file provides TreeSitter-compatible highlighting queries
-; for S-expression constructs inside .orb JSON files.
+; ============================================================
+; JSON Base Highlighting
+; ============================================================
+
+; Object keys
+(pair
+  key: (string) @property.json_key)
+
+; String values (will be overridden by S-expression rules below)
+(string) @string
+
+; Numbers
+(number) @number
+
+; Booleans
+(true) @constant.builtin
+(false) @constant.builtin
+
+; Null
+(null) @constant.builtin
+
+; Punctuation
+"{" @punctuation.bracket
+"}" @punctuation.bracket
+"[" @punctuation.bracket
+"]" @punctuation.bracket
+"," @punctuation.delimiter
+":" @punctuation.delimiter
+
+; ============================================================
+; S-Expression Highlighting (layered on top of JSON)
+; ============================================================
 
 ; Effect operators
 ((string_content) @keyword.operator

@@ -31,14 +31,14 @@
         "grammars": [
             {
                 "language": "orb",
-                "scopeName": "source.json",
+                "scopeName": "source.orb",
                 "path": "./syntaxes/orb.tmLanguage.json"
             },
             {
                 "scopeName": "source.orb.sexpr-injection",
                 "path": "./syntaxes/sexpr.injection.json",
                 "injectTo": [
-                    "source.json"
+                    "source.orb"
                 ]
             }
         ]

@@ -153,7 +153,7 @@ export function generateSExprGrammar(): TmInjectionGrammar {
 
     return {
         scopeName: 'source.orb.sexpr-injection',
-        injectionSelector: 'L:source.json -comment',
+        injectionSelector: 'L:source.orb -comment',
         patterns,
     };
 }

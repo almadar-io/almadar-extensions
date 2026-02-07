@@ -1,6 +1,6 @@
 {
   "scopeName": "source.orb.sexpr-injection",
-  "injectionSelector": "L:source.json -comment",
+  "injectionSelector": "L:source.orb -comment",
   "patterns": [
     {
       "name": "keyword.operator.arithmetic.sexpr",

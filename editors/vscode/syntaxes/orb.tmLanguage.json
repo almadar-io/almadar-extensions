@@ -1,9 +1,141 @@
 {
-    "scopeName": "source.json",
-    "$comment": "Orbital .orb files use JSON syntax as their base. This grammar delegates to VSCode's built-in JSON grammar. S-expression highlighting is provided by the sexpr.injection.json injection grammar.",
+    "$comment": "Orbital .orb files — JSON base with S-expression injection",
+    "scopeName": "source.orb",
+    "name": "Orbital",
+    "fileTypes": [
+        "orb"
+    ],
     "patterns": [
         {
-            "include": "source.json"
+            "include": "#value"
         }
-    ]
+    ],
+    "repository": {
+        "value": {
+            "patterns": [
+                {
+                    "include": "#object"
+                },
+                {
+                    "include": "#array"
+                },
+                {
+                    "include": "#string"
+                },
+                {
+                    "include": "#number"
+                },
+                {
+                    "include": "#constant"
+                }
+            ]
+        },
+        "object": {
+            "begin": "\\{",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.dictionary.begin.json"
+                }
+            },
+            "end": "\\}",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.dictionary.end.json"
+                }
+            },
+            "name": "meta.structure.dictionary.json",
+            "patterns": [
+                {
+                    "include": "#object-key"
+                },
+                {
+                    "include": "#value"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.dictionary.pair.json"
+                },
+                {
+                    "match": ":",
+                    "name": "punctuation.separator.dictionary.key-value.json"
+                }
+            ]
+        },
+        "object-key": {
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.support.type.property-name.begin.json"
+                }
+            },
+            "end": "\"",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.support.type.property-name.end.json"
+                }
+            },
+            "name": "support.type.property-name.json",
+            "patterns": [
+                {
+                    "include": "#string-escape"
+                }
+            ]
+        },
+        "array": {
+            "begin": "\\[",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.begin.json"
+                }
+            },
+            "end": "\\]",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.array.end.json"
+                }
+            },
+            "name": "meta.structure.array.json",
+            "patterns": [
+                {
+                    "include": "#value"
+                },
+                {
+                    "match": ",",
+                    "name": "punctuation.separator.array.json"
+                }
+            ]
+        },
+        "string": {
+            "begin": "\"",
+            "beginCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.begin.json"
+                }
+            },
+            "end": "\"",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.definition.string.end.json"
+                }
+            },
+            "name": "string.quoted.double.json",
+            "patterns": [
+                {
+                    "include": "#string-escape"
+                }
+            ]
+        },
+        "string-escape": {
+            "match": "\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4})",
+            "name": "constant.character.escape.json"
+        },
+        "number": {
+            "match": "-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?",
+            "name": "constant.numeric.json"
+        },
+        "constant": {
+            "match": "\\b(?:true|false|null)\\b",
+            "name": "constant.language.json"
+        }
+    }
 }
