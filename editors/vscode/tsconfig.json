@@ -9,7 +9,10 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "outDir": "./dist",
-        "rootDir": "./src"
+        "rootDir": "./src",
+        "typeRoots": [
+            "./node_modules/@types"
+        ]
     },
     "include": [
         "src/**/*.ts"

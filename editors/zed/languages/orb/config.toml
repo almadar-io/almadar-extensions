@@ -1,0 +1,14 @@
+# Orbital Language Configuration for Zed
+name = "Orbital"
+grammar = "json"
+path_suffixes = ["orb"]
+line_comments = ["//"]
+block_comments = [["/*", "*/"]]
+autoclose_before = ";:.,=}])>"
+brackets = [
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = true },
+    { start = "\"", end = "\"", close = true, newline = false, not_in = ["string"] },
+]
+word_characters = ["_"]
+tab_size = 2

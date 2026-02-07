@@ -1,0 +1,10 @@
+id = "almadar-orb"
+name = "Almadar Orbital"
+version = "1.0.0"
+description = "Language support for .orb files — TypeScript-powered validation with S-expression highlighting"
+authors = ["Almadar Team"]
+repository = "https://github.com/almadar-io/almadar"
+schema_version = 1
+
+[language_servers.typescript-language-server]
+languages = ["Orbital"]
