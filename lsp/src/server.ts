@@ -31,10 +31,10 @@ import * as fs from 'fs';
 
 const TS_PREFIX =
     `import type { OrbitalSchema } from '@almadar/core';\n` +
-    `const _orbital = `;
-const TS_SUFFIX = ` satisfies OrbitalSchema;\n`;
+    `const _orbital: OrbitalSchema = `;
+const TS_SUFFIX = `;\n`;
 const WRAPPER_LINE_OFFSET = 1;
-const WRAPPER_COL_OFFSET = 18;
+const WRAPPER_COL_OFFSET = 32;
 
 // ============================================================================
 // LSP Server Setup
@@ -180,19 +180,13 @@ function getVirtualPath(orbUri: string): string {
     return filePath + '.ts';
 }
 
-/** Filter out diagnostics from the wrapper lines themselves */
+/** Filter out diagnostics that originate from the wrapper, not the .orb content */
 function isDiagnosticInWrapper(diag: ts.Diagnostic): boolean {
     if (diag.start === undefined) return false;
-    // Filter errors about `import type`, `satisfies`, or `_orbital`
     const msg = ts.flattenDiagnosticMessageText(diag.messageText, '\n');
-    if (msg.includes("'OrbitalSchema' only refers to a type")) return true;
-    if (msg.includes("Cannot find name 'satisfies'")) return true;
+    // Filter module resolution errors (when @almadar/core can't be found)
     if (msg.includes("Cannot find module '@almadar/core'")) return true;
-    if (msg.includes("Unexpected keyword or identifier")) return true;
-    // TS error codes from the wrapper
-    if (diag.code === 1434) return true; // Unexpected keyword or identifier
-    if (diag.code === 2693) return true; // 'X' only refers to a type
-    if (diag.code === 2304) return true; // Cannot find name 'satisfies'
+    if (diag.code === 2307) return true; // Cannot find module
     return false;
 }
 

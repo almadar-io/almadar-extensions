@@ -13,11 +13,11 @@ import * as ts from "typescript";
 import * as path from "path";
 import * as fs from "fs";
 var TS_PREFIX = `import type { OrbitalSchema } from '@almadar/core';
-const _orbital = `;
-var TS_SUFFIX = ` satisfies OrbitalSchema;
+const _orbital: OrbitalSchema = `;
+var TS_SUFFIX = `;
 `;
 var WRAPPER_LINE_OFFSET = 1;
-var WRAPPER_COL_OFFSET = 18;
+var WRAPPER_COL_OFFSET = 32;
 var connection = createConnection(ProposedFeatures.all);
 var documents = new TextDocuments(TextDocument);
 var virtualFiles = /* @__PURE__ */ new Map();
@@ -118,13 +118,8 @@ function getVirtualPath(orbUri) {
 function isDiagnosticInWrapper(diag) {
   if (diag.start === void 0) return false;
   const msg = ts.flattenDiagnosticMessageText(diag.messageText, "\n");
-  if (msg.includes("'OrbitalSchema' only refers to a type")) return true;
-  if (msg.includes("Cannot find name 'satisfies'")) return true;
   if (msg.includes("Cannot find module '@almadar/core'")) return true;
-  if (msg.includes("Unexpected keyword or identifier")) return true;
-  if (diag.code === 1434) return true;
-  if (diag.code === 2693) return true;
-  if (diag.code === 2304) return true;
+  if (diag.code === 2307) return true;
   return false;
 }
 function validateOrbDocument(document) {
