@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { jsonPathToPosition } from './server.js';
+import { jsonPathToPosition } from './json-path.js';
 import { execFileSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -62,19 +62,20 @@ describe('jsonPathToPosition', () => {
 // ============================================================================
 
 describe('almadar validate CLI', () => {
-    const almadarBin = path.join(ROOT, 'node_modules', '.bin', 'almadar');
     const schemasDir = path.join(ROOT, 'almadar', 'tests', 'schemas');
 
-    it('should find the almadar CLI binary', () => {
-        expect(fs.existsSync(almadarBin)).toBe(true);
-    });
+    // Use npx to run @almadar/cli (the binary isn't in node_modules/.bin)
+    function runValidate(schemaPath: string): string {
+        return execFileSync('npx', ['-y', '@almadar/cli', 'validate', '--json', schemaPath], {
+            cwd: ROOT,
+            encoding: 'utf-8',
+            timeout: 30_000,
+        });
+    }
 
     it('should validate a valid schema with no errors', () => {
         const schemaPath = path.join(schemasDir, '02-state-machine.orb');
-        const stdout = execFileSync(almadarBin, ['validate', '--json', schemaPath], {
-            cwd: ROOT,
-            encoding: 'utf-8',
-        });
+        const stdout = runValidate(schemaPath);
         const result = JSON.parse(stdout);
         expect(result.valid).toBe(true);
         expect(result.errors).toBeUndefined();
@@ -82,10 +83,7 @@ describe('almadar validate CLI', () => {
 
     it('should produce warnings for guards schema', () => {
         const schemaPath = path.join(schemasDir, '03-guards.orb');
-        const stdout = execFileSync(almadarBin, ['validate', '--json', schemaPath], {
-            cwd: ROOT,
-            encoding: 'utf-8',
-        });
+        const stdout = runValidate(schemaPath);
         const result = JSON.parse(stdout);
         expect(result.valid).toBe(true);
         expect(result.warnings).toBeDefined();
@@ -94,10 +92,7 @@ describe('almadar validate CLI', () => {
 
     it('should produce warnings with JSON paths for guards schema', () => {
         const schemaPath = path.join(schemasDir, '03-guards.orb');
-        const stdout = execFileSync(almadarBin, ['validate', '--json', schemaPath], {
-            cwd: ROOT,
-            encoding: 'utf-8',
-        });
+        const stdout = runValidate(schemaPath);
         const result = JSON.parse(stdout);
         for (const w of result.warnings) {
             expect(w.code).toBeDefined();
@@ -110,10 +105,7 @@ describe('almadar validate CLI', () => {
         const tmpFile = path.join(ROOT, '__test_invalid.orb');
         try {
             fs.writeFileSync(tmpFile, '{ "name": "bad" }', 'utf-8');
-            const stdout = execFileSync(almadarBin, ['validate', '--json', tmpFile], {
-                cwd: ROOT,
-                encoding: 'utf-8',
-            });
+            const stdout = runValidate(tmpFile);
             const result = JSON.parse(stdout);
             expect(result.valid).toBe(false);
             expect(result.errors).toBeDefined();
@@ -126,10 +118,7 @@ describe('almadar validate CLI', () => {
     it('should map warning paths to correct line positions', () => {
         const schemaPath = path.join(schemasDir, '03-guards.orb');
         const content = fs.readFileSync(schemaPath, 'utf-8');
-        const stdout = execFileSync(almadarBin, ['validate', '--json', schemaPath], {
-            cwd: ROOT,
-            encoding: 'utf-8',
-        });
+        const stdout = runValidate(schemaPath);
         const result = JSON.parse(stdout);
         const firstWarning = result.warnings[0];
         const pos = jsonPathToPosition(content, firstWarning.path);

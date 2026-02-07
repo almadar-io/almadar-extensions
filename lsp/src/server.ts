@@ -61,102 +61,7 @@ connection.onInitialize((params: InitializeParams) => {
     };
 });
 
-// ============================================================================
-// JSON Path → Line Position Mapping
-// ============================================================================
 
-interface JsonPosition {
-    line: number;      // 0-indexed
-    character: number; // 0-indexed
-}
-
-/**
- * Given raw JSON text and a JSON path like "orbitals[0].traits[0].stateMachine",
- * find the line/character position of that path in the source.
- *
- * Strategy: walk the path segments and use regex to find each key/index
- * in the source text sequentially, advancing a cursor.
- */
-export function jsonPathToPosition(jsonText: string, jsonPath: string): JsonPosition {
-    if (!jsonPath) return { line: 0, character: 0 };
-
-    // Parse path segments: "orbitals[0].traits[0].guard[1][2]"
-    // → ["orbitals", "0", "traits", "0", "guard", "1", "2"]
-    const segments = jsonPath
-        .replace(/\[(\d+)\]/g, '.$1')
-        .split('.')
-        .filter(Boolean);
-
-    let cursor = 0;
-
-    for (const seg of segments) {
-        const isIndex = /^\d+$/.test(seg);
-
-        if (isIndex) {
-            const idx = parseInt(seg, 10);
-            // Find the n-th element in the current array context
-            // Skip past the opening bracket
-            const bracketPos = jsonText.indexOf('[', cursor);
-            if (bracketPos === -1) break;
-            cursor = bracketPos + 1;
-
-            // Skip idx commas at the top level of this array
-            let depth = 0;
-            let count = 0;
-            for (let i = cursor; i < jsonText.length; i++) {
-                const ch = jsonText[i];
-                if (ch === '{' || ch === '[') depth++;
-                else if (ch === '}' || ch === ']') {
-                    if (depth === 0) break; // end of array
-                    depth--;
-                }
-                else if (ch === ',' && depth === 0) {
-                    count++;
-                    if (count === idx) {
-                        cursor = i + 1;
-                        // Skip whitespace after comma
-                        while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
-                        break;
-                    }
-                }
-            }
-            if (count < idx && idx > 0) break; // couldn't find enough elements
-            // If idx === 0, cursor is already at the first element
-            if (idx === 0) {
-                // Skip whitespace after bracket
-                while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
-            }
-        } else {
-            // Find the key in the current object context
-            // Look for "key": pattern
-            const keyPattern = new RegExp(`"${escapeRegex(seg)}"\\s*:`);
-            const match = keyPattern.exec(jsonText.slice(cursor));
-            if (!match) break;
-            cursor += match.index;
-        }
-    }
-
-    // Convert cursor offset to line/character
-    return offsetToPosition(jsonText, cursor);
-}
-
-function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function offsetToPosition(text: string, offset: number): JsonPosition {
-    let line = 0;
-    let character = 0;
-    for (let i = 0; i < offset && i < text.length; i++) {
-        if (text[i] === '\n') {
-            line++;
-            character = 0;
-        } else {
-            character++;
-        }
-    }
-    return { line, character };
-}
 
 // ============================================================================
 // CLI Validation
@@ -179,24 +84,11 @@ interface ValidateResult {
     }>;
 }
 
-/**
- * Find the `almadar` CLI binary. Prefers a local npx resolution,
- * falls back to the global PATH.
- */
-function findAlmadarBin(): string {
-    // Try the workspace's node_modules/.bin first
-    if (workspaceRoot) {
-        const localBin = path.join(workspaceRoot, 'node_modules', '.bin', 'almadar');
-        if (fs.existsSync(localBin)) return localBin;
-    }
-    // Fallback: assume it's on the PATH
-    return 'almadar';
-}
-
 function runValidate(filePath: string): Promise<ValidateResult> {
     return new Promise((resolve) => {
-        const bin = findAlmadarBin();
-        execFile(bin, ['validate', '--json', filePath], {
+        // Use npx to run @almadar/cli (it's not installed in .bin directly)
+        const npxPath = 'npx';
+        execFile(npxPath, ['-y', '@almadar/cli', 'validate', '--json', filePath], {
             cwd: workspaceRoot ?? path.dirname(filePath),
             timeout: 30_000,
             maxBuffer: 1024 * 1024,

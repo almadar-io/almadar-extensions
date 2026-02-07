@@ -9,28 +9,8 @@ import {
   DiagnosticSeverity
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { execFile } from "child_process";
-import * as path from "path";
-import * as fs from "fs";
-import * as os from "os";
-var DEBOUNCE_MS = 500;
-var connection = createConnection(ProposedFeatures.all);
-var documents = new TextDocuments(TextDocument);
-var debounceTimers = /* @__PURE__ */ new Map();
-var workspaceRoot = null;
-connection.onInitialize((params) => {
-  if (params.rootUri) {
-    workspaceRoot = decodeURIComponent(params.rootUri.replace("file://", ""));
-  } else if (params.rootPath) {
-    workspaceRoot = params.rootPath;
-  }
-  connection.console.log(`OrbLSP initialized. Workspace root: ${workspaceRoot}`);
-  return {
-    capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Full
-    }
-  };
-});
+
+// src/json-path.ts
 function jsonPathToPosition(jsonText, jsonPath) {
   if (!jsonPath) return { line: 0, character: 0 };
   const segments = jsonPath.replace(/\[(\d+)\]/g, ".$1").split(".").filter(Boolean);
@@ -88,17 +68,34 @@ function offsetToPosition(text, offset) {
   }
   return { line, character };
 }
-function findAlmadarBin() {
-  if (workspaceRoot) {
-    const localBin = path.join(workspaceRoot, "node_modules", ".bin", "almadar");
-    if (fs.existsSync(localBin)) return localBin;
+
+// src/server.ts
+import { execFile } from "child_process";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
+var DEBOUNCE_MS = 500;
+var connection = createConnection(ProposedFeatures.all);
+var documents = new TextDocuments(TextDocument);
+var debounceTimers = /* @__PURE__ */ new Map();
+var workspaceRoot = null;
+connection.onInitialize((params) => {
+  if (params.rootUri) {
+    workspaceRoot = decodeURIComponent(params.rootUri.replace("file://", ""));
+  } else if (params.rootPath) {
+    workspaceRoot = params.rootPath;
   }
-  return "almadar";
-}
+  connection.console.log(`OrbLSP initialized. Workspace root: ${workspaceRoot}`);
+  return {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Full
+    }
+  };
+});
 function runValidate(filePath) {
   return new Promise((resolve) => {
-    const bin = findAlmadarBin();
-    execFile(bin, ["validate", "--json", filePath], {
+    const npxPath = "npx";
+    execFile(npxPath, ["-y", "@almadar/cli", "validate", "--json", filePath], {
       cwd: workspaceRoot ?? path.dirname(filePath),
       timeout: 3e4,
       maxBuffer: 1024 * 1024
@@ -200,7 +197,4 @@ documents.onDidClose((event) => {
 documents.listen(connection);
 connection.listen();
 connection.console.log("Almadar OrbLSP started (CLI mode)");
-export {
-  jsonPathToPosition
-};
 //# sourceMappingURL=server.js.map
