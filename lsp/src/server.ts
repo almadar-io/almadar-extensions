@@ -6,7 +6,7 @@
  * LanguageService for diagnostics.
  *
  * Architecture:
- *   .orb file → wrap as `satisfies OrbitalSchema` → TS LanguageService
+ *   .orb file → wrap as `: OrbitalSchema =` → TS LanguageService
  *   → diagnostics → map positions back to .orb → publish to client
  */
 
@@ -43,8 +43,13 @@ const WRAPPER_COL_OFFSET = 32;
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
-// Track virtual file contents for each .orb document
+// Track virtual file contents and versions for each .orb document
 const virtualFiles = new Map<string, string>();
+const scriptVersions = new Map<string, number>();
+
+// Debounce timer for validation
+const DEBOUNCE_MS = 300;
+const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 // Workspace root (resolved on first document)
 let workspaceRoot: string | null = null;
@@ -116,7 +121,7 @@ function createLanguageService(rootDir: string): ts.LanguageService {
 
     const host: ts.LanguageServiceHost = {
         getScriptFileNames: () => [...virtualFiles.keys()],
-        getScriptVersion: () => '1',
+        getScriptVersion: (fileName) => String(scriptVersions.get(fileName) ?? 0),
         getScriptSnapshot: (fileName) => {
             const content = virtualFiles.get(fileName);
             if (content !== undefined) {
@@ -150,8 +155,11 @@ function createLanguageService(rootDir: string): ts.LanguageService {
         getDirectories: ts.sys.getDirectories,
     };
 
-    return ts.createLanguageService(host, ts.createDocumentRegistry());
+    return ts.createLanguageService(host, sharedDocumentRegistry);
 }
+
+// Shared registry so parsed library .d.ts files survive service recreations
+const sharedDocumentRegistry = ts.createDocumentRegistry();
 
 let languageService: ts.LanguageService | null = null;
 let resolvedRoot: string | null = null;
@@ -200,8 +208,9 @@ function validateOrbDocument(document: TextDocument): void {
     const virtualPath = getVirtualPath(document.uri);
     const virtualContent = TS_PREFIX + orbContent + TS_SUFFIX;
 
-    // Update the virtual file
+    // Update the virtual file and bump its version
     virtualFiles.set(virtualPath, virtualContent);
+    scriptVersions.set(virtualPath, (scriptVersions.get(virtualPath) ?? 0) + 1);
 
     const service = getLanguageService(virtualPath);
 
@@ -275,7 +284,16 @@ function validateOrbDocument(document: TextDocument): void {
 // ============================================================================
 
 documents.onDidChangeContent((change) => {
-    validateOrbDocument(change.document);
+    const uri = change.document.uri;
+
+    // Debounce: wait for the user to stop typing before validating
+    const existing = debounceTimers.get(uri);
+    if (existing) clearTimeout(existing);
+
+    debounceTimers.set(uri, setTimeout(() => {
+        debounceTimers.delete(uri);
+        validateOrbDocument(change.document);
+    }, DEBOUNCE_MS));
 });
 
 documents.onDidClose((event) => {
