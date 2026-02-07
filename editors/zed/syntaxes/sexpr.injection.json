@@ -1,0 +1,74 @@
+{
+  "scopeName": "source.orb.sexpr-injection",
+  "injectionSelector": "L:source.json -comment",
+  "patterns": [
+    {
+      "name": "keyword.operator.arithmetic.sexpr",
+      "match": "(?<=\")(floor|round|clamp|ceil|abs|min|max|\\+|-|\\*|/|%)(?=\")"
+    },
+    {
+      "name": "keyword.operator.comparison.sexpr",
+      "match": "(?<=\")(!=|<=|>=|=|<|>)(?=\")"
+    },
+    {
+      "name": "keyword.operator.logical.sexpr",
+      "match": "(?<=\")(and|not|or|if)(?=\")"
+    },
+    {
+      "name": "keyword.control.sexpr",
+      "match": "(?<=\")(when|let|do|fn)(?=\")"
+    },
+    {
+      "name": "keyword.other.effect.sexpr",
+      "match": "(?<=\")(call-service|render-ui|navigate|persist|despawn|notify|spawn|emit|set)(?=\")"
+    },
+    {
+      "name": "support.function.collection.sexpr",
+      "match": "(?<=\")(includes|contains|average|filter|concat|count|first|empty|find|last|map|sum|nth)(?=\")"
+    },
+    {
+      "name": "support.function.math.sexpr",
+      "match": "(?<=\")(math/randomInt|math/default|math/random|math/clamp|math/floor|math/round|math/ceil|math/sqrt|math/sign|math/lerp|math/abs|math/min|math/max|math/pow|math/mod|math/map)(?=\")"
+    },
+    {
+      "name": "support.function.string.sexpr",
+      "match": "(?<=\")(str/startsWith|str/replaceAll|str/capitalize|str/includes|str/endsWith|str/template|str/truncate|str/replace|str/reverse|str/default|str/concat|str/repeat|str/upper|str/lower|str/slice|str/split|str/trim|str/join|str/len)(?=\")"
+    },
+    {
+      "name": "support.function.array.sexpr",
+      "match": "(?<=\")(array/partition|array/findIndex|array/includes|array/dropLast|array/takeLast|array/reverse|array/flatten|array/groupBy|array/prepend|array/shuffle|array/indexOf|array/filter|array/reduce|array/concat|array/unique|array/append|array/insert|array/remove|array/reject|array/repeat|array/every|array/first|array/slice|array/range|array/find|array/some|array/last|array/sort|array/take|array/drop|array/len|array/map|array/nth|array/sum|array/avg|array/min|array/max|array/zip)(?=\")"
+    },
+    {
+      "name": "support.function.object.sexpr",
+      "match": "(?<=\")(object/entries|object/values|object/equals|object/filter|object/merge|object/clone|object/keys|object/pick|object/omit|object/get|object/set|object/has)(?=\")"
+    },
+    {
+      "name": "support.function.time.sexpr",
+      "match": "(?<=\")(time/subtract|time/isBefore|time/isFuture|time/isAfter|time/weekday|time/format|time/isPast|time/minute|time/today|time/parse|time/month|time/diff|time/year|time/hour|time/now|time/add|time/day)(?=\")"
+    },
+    {
+      "name": "support.function.validate.sexpr",
+      "match": "(?<=\")(validate/minLength|validate/maxLength|validate/required|validate/pattern|validate/length|validate/equals|validate/email|validate/phone|validate/range|validate/oneOf|validate/check|validate/uuid|validate/url|validate/min|validate/max)(?=\")"
+    },
+    {
+      "name": "support.function.format.sexpr",
+      "match": "(?<=\")(format/currency|format/percent|format/ordinal|format/number|format/plural|format/bytes|format/phone|format/list)(?=\")"
+    },
+    {
+      "name": "support.function.async.sexpr",
+      "match": "(?<=\")(async/debounce|async/throttle|async/sequence|async/timeout|async/delay|async/retry|async/race|async/all)(?=\")"
+    },
+    {
+      "name": "variable.other.binding.sexpr",
+      "match": "(?<=\")@(entity|payload|context|config)\\.[a-zA-Z_][a-zA-Z0-9_.]*(?=\")"
+    },
+    {
+      "name": "constant.other.event.sexpr",
+      "match": "(?<=\")[A-Z][A-Z0-9_]{2,}(?=\")"
+    },
+    {
+      "name": "entity.name.tag.slot.sexpr",
+      "match": "(?<=\")(main|sidebar|modal|drawer|overlay|center|toast|hud-top|hud-bottom|floating|system)(?=\")"
+    }
+  ]
+}
