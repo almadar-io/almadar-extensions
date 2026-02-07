@@ -6,12 +6,13 @@
  */
 
 import * as vscode from 'vscode';
-import { execFile } from 'child_process';
+import { exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
 let diagnosticCollection: vscode.DiagnosticCollection;
+let outputChannel: vscode.OutputChannel;
 
 // Debounce timer
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -19,7 +20,9 @@ const DEBOUNCE_MS = 500;
 
 export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('orb');
-    context.subscriptions.push(diagnosticCollection);
+    outputChannel = vscode.window.createOutputChannel('Almadar Orb');
+    context.subscriptions.push(diagnosticCollection, outputChannel);
+    outputChannel.appendLine('Almadar Orb extension activated');
 
     const validate = (doc: vscode.TextDocument) => {
         if (doc.languageId !== 'orb') return;
@@ -108,35 +111,40 @@ async function validateOrbDocument(document: vscode.TextDocument) {
     }
 }
 
-function findAlmadarBin(docUri: vscode.Uri): string {
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
-    if (workspaceFolder) {
-        const localBin = path.join(
-            workspaceFolder.uri.fsPath, 'node_modules', '.bin', 'almadar'
-        );
-        if (fs.existsSync(localBin)) return localBin;
-    }
-    return 'almadar';
-}
-
 function runValidate(
     filePath: string,
     docUri: vscode.Uri,
 ): Promise<ValidateResult> {
     return new Promise((resolve) => {
-        const bin = findAlmadarBin(docUri);
         const cwd = vscode.workspace.getWorkspaceFolder(docUri)?.uri.fsPath
             ?? path.dirname(filePath);
 
-        execFile(bin, ['validate', '--json', filePath], {
+        // Use shell exec so npx resolves correctly in VSCode's extension host
+        const cmd = `npx -y @almadar/cli validate --json "${filePath}"`;
+        outputChannel.appendLine(`Running: ${cmd} (cwd: ${cwd})`);
+
+        exec(cmd, {
             cwd,
             timeout: 30_000,
             maxBuffer: 1024 * 1024,
-        }, (_error, stdout) => {
+        }, (error, stdout, stderr) => {
+            if (error) {
+                outputChannel.appendLine(`CLI error: ${error.message}`);
+            }
+            if (stderr) {
+                // Filter out npm warn noise
+                const realStderr = stderr.split('\n')
+                    .filter(l => !l.startsWith('npm warn'))
+                    .join('\n').trim();
+                if (realStderr) outputChannel.appendLine(`stderr: ${realStderr}`);
+            }
             try {
-                resolve(JSON.parse(stdout) as ValidateResult);
-            } catch {
-                resolve({ success: false, valid: true }); // silent fallback
+                const result = JSON.parse(stdout) as ValidateResult;
+                outputChannel.appendLine(`Result: valid=${result.valid}, errors=${result.errors?.length ?? 0}, warnings=${result.warnings?.length ?? 0}`);
+                resolve(result);
+            } catch (parseError) {
+                outputChannel.appendLine(`Failed to parse CLI output: ${stdout.slice(0, 200)}`);
+                resolve({ success: false, valid: true });
             }
         });
     });
