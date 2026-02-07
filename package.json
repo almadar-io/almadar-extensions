@@ -1,0 +1,49 @@
+{
+    "name": "@almadar/extensions",
+    "version": "1.0.0",
+    "description": "Editor extension utilities for .orb files — virtual document wrapper and S-expression grammar generator",
+    "type": "module",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        }
+    },
+    "files": [
+        "dist"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "build": "tsup",
+        "build:watch": "tsup --watch",
+        "typecheck": "tsc --noEmit",
+        "prepublishOnly": "pnpm run build"
+    },
+    "dependencies": {
+        "@almadar/core": "workspace:*",
+        "@almadar/operators": "workspace:*"
+    },
+    "devDependencies": {
+        "tsup": "^8.0.0",
+        "typescript": "^5.4.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/almadar-io/almadar.git",
+        "directory": "packages/almadar-extensions"
+    },
+    "license": "MIT",
+    "keywords": [
+        "almadar",
+        "orbital",
+        "editor",
+        "extensions",
+        "vscode",
+        "zed"
+    ]
+}
