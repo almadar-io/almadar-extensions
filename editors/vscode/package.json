@@ -1,0 +1,58 @@
+{
+    "name": "almadar-orb",
+    "displayName": "Almadar Orbital Language",
+    "description": "Language support for .orb files — TypeScript-powered validation and S-expression highlighting",
+    "version": "1.0.0",
+    "publisher": "almadar",
+    "main": "./dist/extension.js",
+    "activationEvents": [
+        "onLanguage:orb"
+    ],
+    "engines": {
+        "vscode": "^1.70.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "orb",
+                "aliases": [
+                    "Orbital",
+                    "orb"
+                ],
+                "extensions": [
+                    ".orb"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "orb",
+                "scopeName": "source.json",
+                "path": "./syntaxes/orb.tmLanguage.json"
+            },
+            {
+                "scopeName": "source.orb.sexpr-injection",
+                "path": "./syntaxes/sexpr.injection.json",
+                "injectTo": [
+                    "source.json"
+                ]
+            }
+        ]
+    },
+    "scripts": {
+        "compile": "node esbuild.js",
+        "watch": "node esbuild.js --watch",
+        "package": "node esbuild.js --production",
+        "vsix": "npx vsce package"
+    },
+    "devDependencies": {
+        "@types/node": "^18.0.0",
+        "@types/vscode": "^1.70.0",
+        "esbuild": "^0.19.0",
+        "typescript": "^5.0.0"
+    }
+}

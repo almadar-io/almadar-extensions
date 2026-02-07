@@ -19,9 +19,10 @@
         "access": "public"
     },
     "scripts": {
-        "build": "tsup",
+        "build": "tsup && pnpm run generate-grammar",
         "build:watch": "tsup --watch",
         "typecheck": "tsc --noEmit",
+        "generate-grammar": "tsx scripts/build-grammars.ts",
         "prepublishOnly": "pnpm run build"
     },
     "dependencies": {
