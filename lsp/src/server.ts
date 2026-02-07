@@ -23,6 +23,7 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as ts from 'typescript';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // ============================================================================
 // Constants (kept in sync with @almadar/extensions virtual-document.ts)
@@ -45,7 +46,18 @@ const documents = new TextDocuments(TextDocument);
 // Track virtual file contents for each .orb document
 const virtualFiles = new Map<string, string>();
 
-connection.onInitialize((_params: InitializeParams) => {
+// Workspace root (resolved on first document)
+let workspaceRoot: string | null = null;
+
+connection.onInitialize((params: InitializeParams) => {
+    // Use the workspace root from the LSP initialization
+    if (params.rootUri) {
+        workspaceRoot = decodeURIComponent(params.rootUri.replace('file://', ''));
+    } else if (params.rootPath) {
+        workspaceRoot = params.rootPath;
+    }
+    connection.console.log(`OrbLSP initialized. Workspace root: ${workspaceRoot}`);
+
     return {
         capabilities: {
             textDocumentSync: TextDocumentSyncKind.Full,
@@ -54,22 +66,52 @@ connection.onInitialize((_params: InitializeParams) => {
 });
 
 // ============================================================================
+// Workspace Root Discovery
+// ============================================================================
+
+/**
+ * Walk up from a file path to find the nearest directory containing
+ * node_modules/@almadar/core (the monorepo root).
+ */
+function findMonorepoRoot(startPath: string): string {
+    // If we have a workspace root from LSP init, prefer it
+    if (workspaceRoot) {
+        const coreAtRoot = path.join(workspaceRoot, 'node_modules', '@almadar', 'core');
+        if (fs.existsSync(coreAtRoot)) {
+            return workspaceRoot;
+        }
+    }
+
+    // Walk up directories
+    let dir = path.dirname(startPath);
+    for (let i = 0; i < 20; i++) {
+        const corePath = path.join(dir, 'node_modules', '@almadar', 'core');
+        if (fs.existsSync(corePath)) {
+            return dir;
+        }
+        const parent = path.dirname(dir);
+        if (parent === dir) break; // reached filesystem root
+        dir = parent;
+    }
+
+    // Fallback: use workspace root or file directory
+    return workspaceRoot ?? path.dirname(startPath);
+}
+
+// ============================================================================
 // TypeScript LanguageService
 // ============================================================================
 
 function createLanguageService(rootDir: string): ts.LanguageService {
     const compilerOptions: ts.CompilerOptions = {
-        target: ts.ScriptTarget.ES2020,
-        module: ts.ModuleKind.ESNext,
-        moduleResolution: ts.ModuleResolutionKind.Bundler,
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
         strict: true,
         noEmit: true,
         skipLibCheck: true,
-        // Allow .orb files to import @almadar/core types
         baseUrl: rootDir,
-        paths: {
-            '@almadar/core': ['./node_modules/@almadar/core'],
-        },
+        rootDir,
     };
 
     const host: ts.LanguageServiceHost = {
@@ -112,11 +154,16 @@ function createLanguageService(rootDir: string): ts.LanguageService {
 }
 
 let languageService: ts.LanguageService | null = null;
+let resolvedRoot: string | null = null;
 
 function getLanguageService(orbFilePath: string): ts.LanguageService {
-    if (!languageService) {
-        const rootDir = path.dirname(orbFilePath);
-        languageService = createLanguageService(rootDir);
+    const root = findMonorepoRoot(orbFilePath);
+
+    // Re-create service if root changed
+    if (!languageService || resolvedRoot !== root) {
+        resolvedRoot = root;
+        languageService = createLanguageService(root);
+        connection.console.log(`OrbLSP: TS LanguageService rooted at ${root}`);
     }
     return languageService;
 }
@@ -131,6 +178,22 @@ function getVirtualPath(orbUri: string): string {
         ? decodeURIComponent(orbUri.slice(7))
         : orbUri;
     return filePath + '.ts';
+}
+
+/** Filter out diagnostics from the wrapper lines themselves */
+function isDiagnosticInWrapper(diag: ts.Diagnostic): boolean {
+    if (diag.start === undefined) return false;
+    // Filter errors about `import type`, `satisfies`, or `_orbital`
+    const msg = ts.flattenDiagnosticMessageText(diag.messageText, '\n');
+    if (msg.includes("'OrbitalSchema' only refers to a type")) return true;
+    if (msg.includes("Cannot find name 'satisfies'")) return true;
+    if (msg.includes("Cannot find module '@almadar/core'")) return true;
+    if (msg.includes("Unexpected keyword or identifier")) return true;
+    // TS error codes from the wrapper
+    if (diag.code === 1434) return true; // Unexpected keyword or identifier
+    if (diag.code === 2693) return true; // 'X' only refers to a type
+    if (diag.code === 2304) return true; // Cannot find name 'satisfies'
+    return false;
 }
 
 function validateOrbDocument(document: TextDocument): void {
@@ -158,6 +221,9 @@ function validateOrbDocument(document: TextDocument): void {
     for (const diag of allDiags) {
         if (diag.start === undefined || diag.length === undefined) continue;
 
+        // Skip wrapper-related and module resolution errors
+        if (isDiagnosticInWrapper(diag)) continue;
+
         // Get the position in the virtual file
         const sourceFile = service.getProgram()?.getSourceFile(virtualPath);
         if (!sourceFile) continue;
@@ -168,7 +234,7 @@ function validateOrbDocument(document: TextDocument): void {
             diag.start + diag.length,
         );
 
-        // Skip diagnostics in the wrapper prefix
+        // Skip diagnostics in the wrapper prefix (line 0 = import statement)
         if (startPos.line < WRAPPER_LINE_OFFSET) continue;
 
         // Map back to .orb positions

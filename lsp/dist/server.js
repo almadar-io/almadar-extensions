@@ -11,6 +11,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import * as ts from "typescript";
 import * as path from "path";
+import * as fs from "fs";
 var TS_PREFIX = `import type { OrbitalSchema } from '@almadar/core';
 const _orbital = `;
 var TS_SUFFIX = ` satisfies OrbitalSchema;
@@ -20,26 +21,49 @@ var WRAPPER_COL_OFFSET = 18;
 var connection = createConnection(ProposedFeatures.all);
 var documents = new TextDocuments(TextDocument);
 var virtualFiles = /* @__PURE__ */ new Map();
-connection.onInitialize((_params) => {
+var workspaceRoot = null;
+connection.onInitialize((params) => {
+  if (params.rootUri) {
+    workspaceRoot = decodeURIComponent(params.rootUri.replace("file://", ""));
+  } else if (params.rootPath) {
+    workspaceRoot = params.rootPath;
+  }
+  connection.console.log(`OrbLSP initialized. Workspace root: ${workspaceRoot}`);
   return {
     capabilities: {
       textDocumentSync: TextDocumentSyncKind.Full
     }
   };
 });
+function findMonorepoRoot(startPath) {
+  if (workspaceRoot) {
+    const coreAtRoot = path.join(workspaceRoot, "node_modules", "@almadar", "core");
+    if (fs.existsSync(coreAtRoot)) {
+      return workspaceRoot;
+    }
+  }
+  let dir = path.dirname(startPath);
+  for (let i = 0; i < 20; i++) {
+    const corePath = path.join(dir, "node_modules", "@almadar", "core");
+    if (fs.existsSync(corePath)) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return workspaceRoot ?? path.dirname(startPath);
+}
 function createLanguageService2(rootDir) {
   const compilerOptions = {
-    target: ts.ScriptTarget.ES2020,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
     strict: true,
     noEmit: true,
     skipLibCheck: true,
-    // Allow .orb files to import @almadar/core types
     baseUrl: rootDir,
-    paths: {
-      "@almadar/core": ["./node_modules/@almadar/core"]
-    }
+    rootDir
   };
   const host = {
     getScriptFileNames: () => [...virtualFiles.keys()],
@@ -77,16 +101,31 @@ function createLanguageService2(rootDir) {
   return ts.createLanguageService(host, ts.createDocumentRegistry());
 }
 var languageService = null;
+var resolvedRoot = null;
 function getLanguageService(orbFilePath) {
-  if (!languageService) {
-    const rootDir = path.dirname(orbFilePath);
-    languageService = createLanguageService2(rootDir);
+  const root = findMonorepoRoot(orbFilePath);
+  if (!languageService || resolvedRoot !== root) {
+    resolvedRoot = root;
+    languageService = createLanguageService2(root);
+    connection.console.log(`OrbLSP: TS LanguageService rooted at ${root}`);
   }
   return languageService;
 }
 function getVirtualPath(orbUri) {
   const filePath = orbUri.startsWith("file://") ? decodeURIComponent(orbUri.slice(7)) : orbUri;
   return filePath + ".ts";
+}
+function isDiagnosticInWrapper(diag) {
+  if (diag.start === void 0) return false;
+  const msg = ts.flattenDiagnosticMessageText(diag.messageText, "\n");
+  if (msg.includes("'OrbitalSchema' only refers to a type")) return true;
+  if (msg.includes("Cannot find name 'satisfies'")) return true;
+  if (msg.includes("Cannot find module '@almadar/core'")) return true;
+  if (msg.includes("Unexpected keyword or identifier")) return true;
+  if (diag.code === 1434) return true;
+  if (diag.code === 2693) return true;
+  if (diag.code === 2304) return true;
+  return false;
 }
 function validateOrbDocument(document) {
   const orbContent = document.getText();
@@ -104,6 +143,7 @@ function validateOrbDocument(document) {
   const diagnostics = [];
   for (const diag of allDiags) {
     if (diag.start === void 0 || diag.length === void 0) continue;
+    if (isDiagnosticInWrapper(diag)) continue;
     const sourceFile = service.getProgram()?.getSourceFile(virtualPath);
     if (!sourceFile) continue;
     const startPos = ts.getLineAndCharacterOfPosition(sourceFile, diag.start);

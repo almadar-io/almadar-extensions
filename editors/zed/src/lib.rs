@@ -10,13 +10,23 @@ impl zed::Extension for OrbExtension {
     fn language_server_command(
         &mut self,
         _language_server_id: &zed::LanguageServerId,
-        _worktree: &zed::Worktree,
+        worktree: &zed::Worktree,
     ) -> zed::Result<zed::Command> {
-        // Launch the Node.js LSP proxy via npx
-        // The proxy wraps .orb content as TypeScript and provides diagnostics
+        // Resolve `node` from the system PATH via the worktree
+        let node_path = worktree
+            .which("node")
+            .ok_or_else(|| "node not found in PATH. Install Node.js to use orb-lsp.".to_string())?;
+
+        // The server lives relative to the worktree root
+        let worktree_root = worktree.root_path();
+        let server_path = format!(
+            "{}/packages/almadar-extensions/lsp/dist/server.js",
+            worktree_root
+        );
+
         Ok(zed::Command {
-            command: "npx".to_string(),
-            args: vec!["@almadar/orb-lsp".to_string()],
+            command: node_path,
+            args: vec!["--experimental-vm-modules".to_string(), server_path, "--stdio".to_string()],
             env: Default::default(),
         })
     }

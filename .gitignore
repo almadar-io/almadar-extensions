@@ -1,0 +1,19 @@
+# Build outputs
+dist/
+
+# Editor extension build artifacts
+editors/vscode/dist/
+editors/vscode/node_modules/
+editors/vscode/syntaxes/sexpr.injection.json
+editors/zed/syntaxes/
+editors/zed/target/
+
+# LSP build artifacts
+lsp/dist/
+lsp/node_modules/
+
+# Node
+node_modules/
+
+# Rust/WASM
+*.wasm
