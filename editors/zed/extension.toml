@@ -6,5 +6,6 @@ authors = ["Almadar Team"]
 repository = "https://github.com/almadar-io/almadar"
 schema_version = 1
 
-[language_servers.typescript-language-server]
+[language_servers.orb-lsp]
+name = "Orbital LSP"
 languages = ["Orbital"]

@@ -22,9 +22,10 @@
         "build": "tsup && pnpm run generate-grammar && pnpm run build:editors",
         "build:core": "tsup && pnpm run generate-grammar",
         "build:watch": "tsup --watch",
-        "build:editors": "pnpm run build:vscode && pnpm run build:zed",
+        "build:editors": "pnpm run build:lsp && pnpm run build:vscode && pnpm run build:zed",
         "build:vscode": "cd editors/vscode && npm install --ignore-scripts 2>/dev/null; node esbuild.js && cp ../../dist/sexpr.injection.json syntaxes/sexpr.injection.json",
         "build:zed": "mkdir -p editors/zed/syntaxes && cp dist/sexpr.injection.json editors/zed/syntaxes/sexpr.injection.json",
+        "build:lsp": "cd lsp && npm install --ignore-scripts 2>/dev/null; npx tsup",
         "typecheck": "tsc --noEmit",
         "generate-grammar": "tsx scripts/build-grammars.ts",
         "prepublishOnly": "pnpm run build"
