@@ -1,13 +1,13 @@
 /**
  * Almadar OrbLSP Server
  *
- * A stdio-based LSP server that validates .orb files by wrapping
- * their JSON content as TypeScript and delegating to TypeScript's
- * LanguageService for diagnostics.
+ * A stdio-based LSP server that validates .orb files by shelling out
+ * to `almadar validate --json` and mapping diagnostics back to the
+ * original .orb file positions.
  *
  * Architecture:
- *   .orb file → wrap as `: OrbitalSchema =` → TS LanguageService
- *   → diagnostics → map positions back to .orb → publish to client
+ *   .orb file → temp file → `almadar validate --json` → parse JSON
+ *   → map JSON paths to line positions → publish diagnostics
  */
 
 import {
@@ -21,20 +21,16 @@ import {
 } from 'vscode-languageserver/node.js';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import * as ts from 'typescript';
+import { execFile } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 
 // ============================================================================
-// Constants (kept in sync with @almadar/extensions virtual-document.ts)
+// Constants
 // ============================================================================
 
-const TS_PREFIX =
-    `import type { OrbitalSchema } from '@almadar/core';\n` +
-    `const _orbital: OrbitalSchema = `;
-const TS_SUFFIX = `;\n`;
-const WRAPPER_LINE_OFFSET = 1;
-const WRAPPER_COL_OFFSET = 32;
+const DEBOUNCE_MS = 500;
 
 // ============================================================================
 // LSP Server Setup
@@ -43,19 +39,13 @@ const WRAPPER_COL_OFFSET = 32;
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
-// Track virtual file contents and versions for each .orb document
-const virtualFiles = new Map<string, string>();
-const scriptVersions = new Map<string, number>();
-
-// Debounce timer for validation
-const DEBOUNCE_MS = 300;
+// Debounce timers per document URI
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-// Workspace root (resolved on first document)
+// Workspace root (resolved on initialization)
 let workspaceRoot: string | null = null;
 
 connection.onInitialize((params: InitializeParams) => {
-    // Use the workspace root from the LSP initialization
     if (params.rootUri) {
         workspaceRoot = decodeURIComponent(params.rootUri.replace('file://', ''));
     } else if (params.rootPath) {
@@ -71,212 +61,241 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 // ============================================================================
-// Workspace Root Discovery
+// JSON Path → Line Position Mapping
 // ============================================================================
+
+interface JsonPosition {
+    line: number;      // 0-indexed
+    character: number; // 0-indexed
+}
 
 /**
- * Walk up from a file path to find the nearest directory containing
- * node_modules/@almadar/core (the monorepo root).
+ * Given raw JSON text and a JSON path like "orbitals[0].traits[0].stateMachine",
+ * find the line/character position of that path in the source.
+ *
+ * Strategy: walk the path segments and use regex to find each key/index
+ * in the source text sequentially, advancing a cursor.
  */
-function findMonorepoRoot(startPath: string): string {
-    // If we have a workspace root from LSP init, prefer it
-    if (workspaceRoot) {
-        const coreAtRoot = path.join(workspaceRoot, 'node_modules', '@almadar', 'core');
-        if (fs.existsSync(coreAtRoot)) {
-            return workspaceRoot;
-        }
-    }
+export function jsonPathToPosition(jsonText: string, jsonPath: string): JsonPosition {
+    if (!jsonPath) return { line: 0, character: 0 };
 
-    // Walk up directories
-    let dir = path.dirname(startPath);
-    for (let i = 0; i < 20; i++) {
-        const corePath = path.join(dir, 'node_modules', '@almadar', 'core');
-        if (fs.existsSync(corePath)) {
-            return dir;
-        }
-        const parent = path.dirname(dir);
-        if (parent === dir) break; // reached filesystem root
-        dir = parent;
-    }
+    // Parse path segments: "orbitals[0].traits[0].guard[1][2]"
+    // → ["orbitals", "0", "traits", "0", "guard", "1", "2"]
+    const segments = jsonPath
+        .replace(/\[(\d+)\]/g, '.$1')
+        .split('.')
+        .filter(Boolean);
 
-    // Fallback: use workspace root or file directory
-    return workspaceRoot ?? path.dirname(startPath);
-}
+    let cursor = 0;
 
-// ============================================================================
-// TypeScript LanguageService
-// ============================================================================
+    for (const seg of segments) {
+        const isIndex = /^\d+$/.test(seg);
 
-function createLanguageService(rootDir: string): ts.LanguageService {
-    const compilerOptions: ts.CompilerOptions = {
-        target: ts.ScriptTarget.ES2022,
-        module: ts.ModuleKind.NodeNext,
-        moduleResolution: ts.ModuleResolutionKind.NodeNext,
-        strict: true,
-        noEmit: true,
-        skipLibCheck: true,
-        baseUrl: rootDir,
-        rootDir,
-    };
+        if (isIndex) {
+            const idx = parseInt(seg, 10);
+            // Find the n-th element in the current array context
+            // Skip past the opening bracket
+            const bracketPos = jsonText.indexOf('[', cursor);
+            if (bracketPos === -1) break;
+            cursor = bracketPos + 1;
 
-    const host: ts.LanguageServiceHost = {
-        getScriptFileNames: () => [...virtualFiles.keys()],
-        getScriptVersion: (fileName) => String(scriptVersions.get(fileName) ?? 0),
-        getScriptSnapshot: (fileName) => {
-            const content = virtualFiles.get(fileName);
-            if (content !== undefined) {
-                return ts.ScriptSnapshot.fromString(content);
-            }
-            // Try reading from disk (for node_modules types)
-            try {
-                const text = ts.sys.readFile(fileName);
-                if (text !== undefined) {
-                    return ts.ScriptSnapshot.fromString(text);
+            // Skip idx commas at the top level of this array
+            let depth = 0;
+            let count = 0;
+            for (let i = cursor; i < jsonText.length; i++) {
+                const ch = jsonText[i];
+                if (ch === '{' || ch === '[') depth++;
+                else if (ch === '}' || ch === ']') {
+                    if (depth === 0) break; // end of array
+                    depth--;
                 }
-            } catch {
-                // Ignore
+                else if (ch === ',' && depth === 0) {
+                    count++;
+                    if (count === idx) {
+                        cursor = i + 1;
+                        // Skip whitespace after comma
+                        while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
+                        break;
+                    }
+                }
             }
-            return undefined;
-        },
-        getCurrentDirectory: () => rootDir,
-        getCompilationSettings: () => compilerOptions,
-        getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-        fileExists: (fileName) => {
-            if (virtualFiles.has(fileName)) return true;
-            return ts.sys.fileExists(fileName);
-        },
-        readFile: (fileName) => {
-            const content = virtualFiles.get(fileName);
-            if (content !== undefined) return content;
-            return ts.sys.readFile(fileName);
-        },
-        readDirectory: ts.sys.readDirectory,
-        directoryExists: ts.sys.directoryExists,
-        getDirectories: ts.sys.getDirectories,
-    };
+            if (count < idx && idx > 0) break; // couldn't find enough elements
+            // If idx === 0, cursor is already at the first element
+            if (idx === 0) {
+                // Skip whitespace after bracket
+                while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
+            }
+        } else {
+            // Find the key in the current object context
+            // Look for "key": pattern
+            const keyPattern = new RegExp(`"${escapeRegex(seg)}"\\s*:`);
+            const match = keyPattern.exec(jsonText.slice(cursor));
+            if (!match) break;
+            cursor += match.index;
+        }
+    }
 
-    return ts.createLanguageService(host, sharedDocumentRegistry);
+    // Convert cursor offset to line/character
+    return offsetToPosition(jsonText, cursor);
 }
 
-// Shared registry so parsed library .d.ts files survive service recreations
-const sharedDocumentRegistry = ts.createDocumentRegistry();
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-let languageService: ts.LanguageService | null = null;
-let resolvedRoot: string | null = null;
-
-function getLanguageService(orbFilePath: string): ts.LanguageService {
-    const root = findMonorepoRoot(orbFilePath);
-
-    // Re-create service if root changed
-    if (!languageService || resolvedRoot !== root) {
-        resolvedRoot = root;
-        languageService = createLanguageService(root);
-        connection.console.log(`OrbLSP: TS LanguageService rooted at ${root}`);
+function offsetToPosition(text: string, offset: number): JsonPosition {
+    let line = 0;
+    let character = 0;
+    for (let i = 0; i < offset && i < text.length; i++) {
+        if (text[i] === '\n') {
+            line++;
+            character = 0;
+        } else {
+            character++;
+        }
     }
-    return languageService;
+    return { line, character };
+}
+
+// ============================================================================
+// CLI Validation
+// ============================================================================
+
+interface ValidateResult {
+    success: boolean;
+    valid: boolean;
+    errors?: Array<{
+        code: string;
+        path: string;
+        message: string;
+        suggestion?: string;
+    }>;
+    warnings?: Array<{
+        code: string;
+        path: string;
+        message: string;
+        suggestion?: string;
+    }>;
+}
+
+/**
+ * Find the `almadar` CLI binary. Prefers a local npx resolution,
+ * falls back to the global PATH.
+ */
+function findAlmadarBin(): string {
+    // Try the workspace's node_modules/.bin first
+    if (workspaceRoot) {
+        const localBin = path.join(workspaceRoot, 'node_modules', '.bin', 'almadar');
+        if (fs.existsSync(localBin)) return localBin;
+    }
+    // Fallback: assume it's on the PATH
+    return 'almadar';
+}
+
+function runValidate(filePath: string): Promise<ValidateResult> {
+    return new Promise((resolve) => {
+        const bin = findAlmadarBin();
+        execFile(bin, ['validate', '--json', filePath], {
+            cwd: workspaceRoot ?? path.dirname(filePath),
+            timeout: 30_000,
+            maxBuffer: 1024 * 1024,
+        }, (error, stdout, stderr) => {
+            try {
+                // The CLI returns JSON on stdout even on validation failures
+                const result = JSON.parse(stdout) as ValidateResult;
+                resolve(result);
+            } catch {
+                // If the CLI itself failed (not found, crash, etc.)
+                connection.console.error(
+                    `OrbLSP: almadar validate failed: ${error?.message ?? stderr}`
+                );
+                resolve({
+                    success: false,
+                    valid: false,
+                    errors: [{
+                        code: 'CLI_ERROR',
+                        path: '',
+                        message: `Validation CLI error: ${error?.message ?? 'unknown error'}`,
+                    }],
+                });
+            }
+        });
+    });
 }
 
 // ============================================================================
 // Document Validation
 // ============================================================================
 
-function getVirtualPath(orbUri: string): string {
-    // Convert URI to a .ts path for the virtual file
-    const filePath = orbUri.startsWith('file://')
-        ? decodeURIComponent(orbUri.slice(7))
-        : orbUri;
-    return filePath + '.ts';
-}
-
-/** Filter out diagnostics that originate from the wrapper, not the .orb content */
-function isDiagnosticInWrapper(diag: ts.Diagnostic): boolean {
-    if (diag.start === undefined) return false;
-    const msg = ts.flattenDiagnosticMessageText(diag.messageText, '\n');
-    // Filter module resolution errors (when @almadar/core can't be found)
-    if (msg.includes("Cannot find module '@almadar/core'")) return true;
-    if (diag.code === 2307) return true; // Cannot find module
-    return false;
-}
-
-function validateOrbDocument(document: TextDocument): void {
+async function validateOrbDocument(document: TextDocument): Promise<void> {
     const orbContent = document.getText();
     if (!orbContent.trim()) {
         connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
         return;
     }
 
-    const virtualPath = getVirtualPath(document.uri);
-    const virtualContent = TS_PREFIX + orbContent + TS_SUFFIX;
+    // Write content to a temp file (the CLI requires a file path)
+    const tmpDir = os.tmpdir();
+    const tmpFile = path.join(tmpDir, `orb-lsp-${process.pid}-${Date.now()}.orb`);
 
-    // Update the virtual file and bump its version
-    virtualFiles.set(virtualPath, virtualContent);
-    scriptVersions.set(virtualPath, (scriptVersions.get(virtualPath) ?? 0) + 1);
+    try {
+        fs.writeFileSync(tmpFile, orbContent, 'utf-8');
+        const result = await runValidate(tmpFile);
 
-    const service = getLanguageService(virtualPath);
+        const diagnostics: Diagnostic[] = [];
 
-    // Get semantic diagnostics from TypeScript
-    const semanticDiags = service.getSemanticDiagnostics(virtualPath);
-    const syntacticDiags = service.getSyntacticDiagnostics(virtualPath);
-    const allDiags = [...syntacticDiags, ...semanticDiags];
+        // Map errors
+        if (result.errors) {
+            for (const err of result.errors) {
+                diagnostics.push(makeDiagnostic(
+                    orbContent, err, DiagnosticSeverity.Error
+                ));
+            }
+        }
 
-    const diagnostics: Diagnostic[] = [];
+        // Map warnings
+        if (result.warnings) {
+            for (const warn of result.warnings) {
+                diagnostics.push(makeDiagnostic(
+                    orbContent, warn, DiagnosticSeverity.Warning
+                ));
+            }
+        }
 
-    for (const diag of allDiags) {
-        if (diag.start === undefined || diag.length === undefined) continue;
+        connection.sendDiagnostics({ uri: document.uri, diagnostics });
+    } finally {
+        // Clean up temp file
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+    }
+}
 
-        // Skip wrapper-related and module resolution errors
-        if (isDiagnosticInWrapper(diag)) continue;
+function makeDiagnostic(
+    orbContent: string,
+    item: { code: string; path: string; message: string; suggestion?: string },
+    severity: DiagnosticSeverity,
+): Diagnostic {
+    const pos = jsonPathToPosition(orbContent, item.path);
 
-        // Get the position in the virtual file
-        const sourceFile = service.getProgram()?.getSourceFile(virtualPath);
-        if (!sourceFile) continue;
+    // Find the end of the line for the range
+    const lines = orbContent.split('\n');
+    const lineText = lines[pos.line] ?? '';
+    const endChar = lineText.length;
 
-        const startPos = ts.getLineAndCharacterOfPosition(sourceFile, diag.start);
-        const endPos = ts.getLineAndCharacterOfPosition(
-            sourceFile,
-            diag.start + diag.length,
-        );
-
-        // Skip diagnostics in the wrapper prefix (line 0 = import statement)
-        if (startPos.line < WRAPPER_LINE_OFFSET) continue;
-
-        // Map back to .orb positions
-        const orbStartLine = startPos.line - WRAPPER_LINE_OFFSET;
-        const orbStartChar =
-            orbStartLine === 0
-                ? Math.max(0, startPos.character - WRAPPER_COL_OFFSET)
-                : startPos.character;
-        const orbEndLine = endPos.line - WRAPPER_LINE_OFFSET;
-        const orbEndChar =
-            orbEndLine === 0
-                ? Math.max(0, endPos.character - WRAPPER_COL_OFFSET)
-                : endPos.character;
-
-        const message = ts.flattenDiagnosticMessageText(
-            diag.messageText,
-            '\n',
-        ).replace(/_orbital/g, '.orb file');
-
-        const severity =
-            diag.category === ts.DiagnosticCategory.Error
-                ? DiagnosticSeverity.Error
-                : diag.category === ts.DiagnosticCategory.Warning
-                    ? DiagnosticSeverity.Warning
-                    : DiagnosticSeverity.Information;
-
-        diagnostics.push({
-            range: {
-                start: { line: Math.max(0, orbStartLine), character: Math.max(0, orbStartChar) },
-                end: { line: Math.max(0, orbEndLine), character: Math.max(0, orbEndChar) },
-            },
-            message,
-            severity,
-            source: 'almadar-orb',
-            code: diag.code,
-        });
+    let message = item.message;
+    if (item.suggestion) {
+        message += `\n💡 ${item.suggestion}`;
     }
 
-    connection.sendDiagnostics({ uri: document.uri, diagnostics });
+    return {
+        range: {
+            start: { line: pos.line, character: pos.character },
+            end: { line: pos.line, character: endChar },
+        },
+        message,
+        severity,
+        source: 'almadar',
+        code: item.code,
+    };
 }
 
 // ============================================================================
@@ -286,7 +305,7 @@ function validateOrbDocument(document: TextDocument): void {
 documents.onDidChangeContent((change) => {
     const uri = change.document.uri;
 
-    // Debounce: wait for the user to stop typing before validating
+    // Debounce: wait for the user to stop typing
     const existing = debounceTimers.get(uri);
     if (existing) clearTimeout(existing);
 
@@ -297,8 +316,9 @@ documents.onDidChangeContent((change) => {
 });
 
 documents.onDidClose((event) => {
-    const virtualPath = getVirtualPath(event.document.uri);
-    virtualFiles.delete(virtualPath);
+    const timer = debounceTimers.get(event.document.uri);
+    if (timer) clearTimeout(timer);
+    debounceTimers.delete(event.document.uri);
     connection.sendDiagnostics({ uri: event.document.uri, diagnostics: [] });
 });
 
@@ -309,4 +329,4 @@ documents.onDidClose((event) => {
 documents.listen(connection);
 connection.listen();
 
-connection.console.log('Almadar OrbLSP started');
+connection.console.log('Almadar OrbLSP started (CLI mode)');
