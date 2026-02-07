@@ -1,38 +1,34 @@
 /**
  * Almadar Orbital Extension for VSCode
  *
- * Uses the TypeScript Wrapper Trick:
- * 1. On .orb file open/change, wraps JSON content as:
- *    `import type { OrbitalSchema } from '@almadar/core';`
- *    `const _orbital = { ... } satisfies OrbitalSchema;`
- *
- * 2. Creates a virtual .ts file that TypeScript LSP validates.
- *
- * 3. Maps TS diagnostics back to the .orb file positions.
- *
- * Result: Full structural validation, autocomplete, hover docs —
- * zero custom grammar work. Rebuild @almadar/core to update.
+ * Validates .orb files by running `almadar validate --json` and
+ * mapping the structured output to VSCode diagnostics.
  */
 
 import * as vscode from 'vscode';
-
-// Inline the wrapper constants to avoid bundling @almadar/extensions at runtime.
-// These must stay in sync with virtual-document.ts.
-const TS_PREFIX = `import type { OrbitalSchema } from '@almadar/core';\nconst _orbital = `;
-const TS_SUFFIX = ` satisfies OrbitalSchema;\n`;
-const WRAPPER_LINE_OFFSET = 1;
-const WRAPPER_COL_OFFSET = 18; // length of "const _orbital = "
+import { execFile } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 let diagnosticCollection: vscode.DiagnosticCollection;
+
+// Debounce timer
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+const DEBOUNCE_MS = 500;
 
 export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('orb');
     context.subscriptions.push(diagnosticCollection);
 
-    // Validate on open, change, and save
     const validate = (doc: vscode.TextDocument) => {
         if (doc.languageId !== 'orb') return;
-        validateOrbDocument(doc);
+
+        // Debounce: wait for the user to stop typing
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            validateOrbDocument(doc);
+        }, DEBOUNCE_MS);
     };
 
     context.subscriptions.push(
@@ -50,9 +46,26 @@ export function activate(context: vscode.ExtensionContext) {
     }
 }
 
+interface ValidateResult {
+    success: boolean;
+    valid: boolean;
+    errors?: Array<{
+        code: string;
+        path: string;
+        message: string;
+        suggestion?: string;
+    }>;
+    warnings?: Array<{
+        code: string;
+        path: string;
+        message: string;
+        suggestion?: string;
+    }>;
+}
+
 /**
- * Wrap the .orb content as a virtual .ts file, run TypeScript
- * diagnostics on it, and map errors back to the .orb positions.
+ * Run `almadar validate --json` on the document content and map
+ * diagnostics back to the .orb positions.
  */
 async function validateOrbDocument(document: vscode.TextDocument) {
     const orbContent = document.getText();
@@ -61,58 +74,160 @@ async function validateOrbDocument(document: vscode.TextDocument) {
         return;
     }
 
-    // Create the virtual TypeScript content
-    const virtualContent = TS_PREFIX + orbContent + TS_SUFFIX;
-
-    // Write to a temporary virtual file for tsserver to pick up
-    const virtualUri = document.uri.with({
-        scheme: 'untitled',
-        path: document.uri.path + '.ts',
-    });
+    // Write content to a temp file (the CLI requires a file path)
+    const tmpFile = path.join(
+        os.tmpdir(),
+        `orb-vscode-${process.pid}-${Date.now()}.orb`
+    );
 
     try {
-        // Use VSCode's built-in TypeScript extension to get diagnostics
-        // by executing the typescript.tsserver.getSemanticDiagnostics command
-        const tsDiagnostics = await vscode.languages.getDiagnostics(virtualUri);
+        fs.writeFileSync(tmpFile, orbContent, 'utf-8');
+        const result = await runValidate(tmpFile, document.uri);
 
-        const orbDiagnostics: vscode.Diagnostic[] = tsDiagnostics
-            .filter((d) => d.range.start.line >= WRAPPER_LINE_OFFSET)
-            .map((d) => {
-                const startLine = d.range.start.line - WRAPPER_LINE_OFFSET;
-                const startChar =
-                    startLine === 0
-                        ? Math.max(0, d.range.start.character - WRAPPER_COL_OFFSET)
-                        : d.range.start.character;
-                const endLine = d.range.end.line - WRAPPER_LINE_OFFSET;
-                const endChar =
-                    endLine === 0
-                        ? Math.max(0, d.range.end.character - WRAPPER_COL_OFFSET)
-                        : d.range.end.character;
+        const diagnostics: vscode.Diagnostic[] = [];
 
-                return new vscode.Diagnostic(
-                    new vscode.Range(
-                        Math.max(0, startLine),
-                        Math.max(0, startChar),
-                        Math.max(0, endLine),
-                        Math.max(0, endChar),
-                    ),
-                    cleanMessage(d.message),
-                    d.severity,
-                );
-            });
+        if (result.errors) {
+            for (const err of result.errors) {
+                diagnostics.push(makeDiagnostic(
+                    orbContent, err, vscode.DiagnosticSeverity.Error
+                ));
+            }
+        }
 
-        diagnosticCollection.set(document.uri, orbDiagnostics);
-    } catch {
-        // TypeScript extension not available — silently degrade.
-        // S-expression highlighting still works via the injection grammar.
+        if (result.warnings) {
+            for (const warn of result.warnings) {
+                diagnostics.push(makeDiagnostic(
+                    orbContent, warn, vscode.DiagnosticSeverity.Warning
+                ));
+            }
+        }
+
+        diagnosticCollection.set(document.uri, diagnostics);
+    } finally {
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
     }
 }
 
+function findAlmadarBin(docUri: vscode.Uri): string {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(docUri);
+    if (workspaceFolder) {
+        const localBin = path.join(
+            workspaceFolder.uri.fsPath, 'node_modules', '.bin', 'almadar'
+        );
+        if (fs.existsSync(localBin)) return localBin;
+    }
+    return 'almadar';
+}
+
+function runValidate(
+    filePath: string,
+    docUri: vscode.Uri,
+): Promise<ValidateResult> {
+    return new Promise((resolve) => {
+        const bin = findAlmadarBin(docUri);
+        const cwd = vscode.workspace.getWorkspaceFolder(docUri)?.uri.fsPath
+            ?? path.dirname(filePath);
+
+        execFile(bin, ['validate', '--json', filePath], {
+            cwd,
+            timeout: 30_000,
+            maxBuffer: 1024 * 1024,
+        }, (_error, stdout) => {
+            try {
+                resolve(JSON.parse(stdout) as ValidateResult);
+            } catch {
+                resolve({ success: false, valid: true }); // silent fallback
+            }
+        });
+    });
+}
+
+function makeDiagnostic(
+    orbContent: string,
+    item: { code: string; path: string; message: string; suggestion?: string },
+    severity: vscode.DiagnosticSeverity,
+): vscode.Diagnostic {
+    const pos = jsonPathToPosition(orbContent, item.path);
+    const lines = orbContent.split('\n');
+    const lineText = lines[pos.line] ?? '';
+
+    let message = item.message;
+    if (item.suggestion) {
+        message += `\n💡 ${item.suggestion}`;
+    }
+
+    return new vscode.Diagnostic(
+        new vscode.Range(pos.line, pos.character, pos.line, lineText.length),
+        message,
+        severity,
+    );
+}
+
 /**
- * Clean TypeScript error messages for .orb context.
+ * Map a JSON path (e.g. "orbitals[0].traits[0].guard[1][2]") to a
+ * line/character position in the raw JSON text.
  */
-function cleanMessage(msg: string): string {
-    return msg.replace(/_orbital/g, '.orb file');
+function jsonPathToPosition(
+    jsonText: string,
+    jsonPath: string,
+): { line: number; character: number } {
+    if (!jsonPath) return { line: 0, character: 0 };
+
+    const segments = jsonPath
+        .replace(/\[(\d+)\]/g, '.$1')
+        .split('.')
+        .filter(Boolean);
+
+    let cursor = 0;
+
+    for (const seg of segments) {
+        const isIndex = /^\d+$/.test(seg);
+
+        if (isIndex) {
+            const idx = parseInt(seg, 10);
+            const bracketPos = jsonText.indexOf('[', cursor);
+            if (bracketPos === -1) break;
+            cursor = bracketPos + 1;
+
+            let depth = 0;
+            let count = 0;
+            for (let i = cursor; i < jsonText.length; i++) {
+                const ch = jsonText[i];
+                if (ch === '{' || ch === '[') depth++;
+                else if (ch === '}' || ch === ']') {
+                    if (depth === 0) break;
+                    depth--;
+                } else if (ch === ',' && depth === 0) {
+                    count++;
+                    if (count === idx) {
+                        cursor = i + 1;
+                        while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
+                        break;
+                    }
+                }
+            }
+            if (idx === 0) {
+                while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
+            }
+        } else {
+            const keyPattern = new RegExp(
+                `"${seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\s*:`
+            );
+            const match = keyPattern.exec(jsonText.slice(cursor));
+            if (!match) break;
+            cursor += match.index;
+        }
+    }
+
+    // Convert cursor offset to line/character
+    let line = 0;
+    let character = 0;
+    for (let i = 0; i < cursor && i < jsonText.length; i++) {
+        if (jsonText[i] === '\n') { line++; character = 0; }
+        else character++;
+    }
+
+    return { line, character };
 }
 
 export function deactivate() { }

@@ -1,7 +1,7 @@
 {
     "name": "@almadar/orb-lsp",
     "version": "1.0.0",
-    "description": "Language Server Protocol proxy for .orb files — wraps content as TypeScript for validation",
+    "description": "Language Server Protocol for .orb files — validates via almadar CLI",
     "type": "module",
     "main": "./dist/server.js",
     "bin": {
@@ -9,12 +9,12 @@
     },
     "scripts": {
         "build": "tsup",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
     },
     "dependencies": {
         "vscode-languageserver": "^9.0.0",
-        "vscode-languageserver-textdocument": "^1.0.0",
-        "typescript": "^5.4.0"
+        "vscode-languageserver-textdocument": "^1.0.0"
     },
     "devDependencies": {
         "@types/node": "^18.0.0",

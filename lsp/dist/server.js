@@ -9,18 +9,14 @@ import {
   DiagnosticSeverity
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import * as ts from "typescript";
+import { execFile } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
-var TS_PREFIX = `import type { OrbitalSchema } from '@almadar/core';
-const _orbital: OrbitalSchema = `;
-var TS_SUFFIX = `;
-`;
-var WRAPPER_LINE_OFFSET = 1;
-var WRAPPER_COL_OFFSET = 32;
+import * as os from "os";
+var DEBOUNCE_MS = 500;
 var connection = createConnection(ProposedFeatures.all);
 var documents = new TextDocuments(TextDocument);
-var virtualFiles = /* @__PURE__ */ new Map();
+var debounceTimers = /* @__PURE__ */ new Map();
 var workspaceRoot = null;
 connection.onInitialize((params) => {
   if (params.rootUri) {
@@ -35,149 +31,176 @@ connection.onInitialize((params) => {
     }
   };
 });
-function findMonorepoRoot(startPath) {
-  if (workspaceRoot) {
-    const coreAtRoot = path.join(workspaceRoot, "node_modules", "@almadar", "core");
-    if (fs.existsSync(coreAtRoot)) {
-      return workspaceRoot;
-    }
-  }
-  let dir = path.dirname(startPath);
-  for (let i = 0; i < 20; i++) {
-    const corePath = path.join(dir, "node_modules", "@almadar", "core");
-    if (fs.existsSync(corePath)) {
-      return dir;
-    }
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return workspaceRoot ?? path.dirname(startPath);
-}
-function createLanguageService2(rootDir) {
-  const compilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.NodeNext,
-    moduleResolution: ts.ModuleResolutionKind.NodeNext,
-    strict: true,
-    noEmit: true,
-    skipLibCheck: true,
-    baseUrl: rootDir,
-    rootDir
-  };
-  const host = {
-    getScriptFileNames: () => [...virtualFiles.keys()],
-    getScriptVersion: () => "1",
-    getScriptSnapshot: (fileName) => {
-      const content = virtualFiles.get(fileName);
-      if (content !== void 0) {
-        return ts.ScriptSnapshot.fromString(content);
-      }
-      try {
-        const text = ts.sys.readFile(fileName);
-        if (text !== void 0) {
-          return ts.ScriptSnapshot.fromString(text);
+function jsonPathToPosition(jsonText, jsonPath) {
+  if (!jsonPath) return { line: 0, character: 0 };
+  const segments = jsonPath.replace(/\[(\d+)\]/g, ".$1").split(".").filter(Boolean);
+  let cursor = 0;
+  for (const seg of segments) {
+    const isIndex = /^\d+$/.test(seg);
+    if (isIndex) {
+      const idx = parseInt(seg, 10);
+      const bracketPos = jsonText.indexOf("[", cursor);
+      if (bracketPos === -1) break;
+      cursor = bracketPos + 1;
+      let depth = 0;
+      let count = 0;
+      for (let i = cursor; i < jsonText.length; i++) {
+        const ch = jsonText[i];
+        if (ch === "{" || ch === "[") depth++;
+        else if (ch === "}" || ch === "]") {
+          if (depth === 0) break;
+          depth--;
+        } else if (ch === "," && depth === 0) {
+          count++;
+          if (count === idx) {
+            cursor = i + 1;
+            while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
+            break;
+          }
         }
-      } catch {
       }
-      return void 0;
-    },
-    getCurrentDirectory: () => rootDir,
-    getCompilationSettings: () => compilerOptions,
-    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
-    fileExists: (fileName) => {
-      if (virtualFiles.has(fileName)) return true;
-      return ts.sys.fileExists(fileName);
-    },
-    readFile: (fileName) => {
-      const content = virtualFiles.get(fileName);
-      if (content !== void 0) return content;
-      return ts.sys.readFile(fileName);
-    },
-    readDirectory: ts.sys.readDirectory,
-    directoryExists: ts.sys.directoryExists,
-    getDirectories: ts.sys.getDirectories
-  };
-  return ts.createLanguageService(host, ts.createDocumentRegistry());
-}
-var languageService = null;
-var resolvedRoot = null;
-function getLanguageService(orbFilePath) {
-  const root = findMonorepoRoot(orbFilePath);
-  if (!languageService || resolvedRoot !== root) {
-    resolvedRoot = root;
-    languageService = createLanguageService2(root);
-    connection.console.log(`OrbLSP: TS LanguageService rooted at ${root}`);
+      if (count < idx && idx > 0) break;
+      if (idx === 0) {
+        while (cursor < jsonText.length && /\s/.test(jsonText[cursor])) cursor++;
+      }
+    } else {
+      const keyPattern = new RegExp(`"${escapeRegex(seg)}"\\s*:`);
+      const match = keyPattern.exec(jsonText.slice(cursor));
+      if (!match) break;
+      cursor += match.index;
+    }
   }
-  return languageService;
+  return offsetToPosition(jsonText, cursor);
 }
-function getVirtualPath(orbUri) {
-  const filePath = orbUri.startsWith("file://") ? decodeURIComponent(orbUri.slice(7)) : orbUri;
-  return filePath + ".ts";
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-function isDiagnosticInWrapper(diag) {
-  if (diag.start === void 0) return false;
-  const msg = ts.flattenDiagnosticMessageText(diag.messageText, "\n");
-  if (msg.includes("Cannot find module '@almadar/core'")) return true;
-  if (diag.code === 2307) return true;
-  return false;
+function offsetToPosition(text, offset) {
+  let line = 0;
+  let character = 0;
+  for (let i = 0; i < offset && i < text.length; i++) {
+    if (text[i] === "\n") {
+      line++;
+      character = 0;
+    } else {
+      character++;
+    }
+  }
+  return { line, character };
 }
-function validateOrbDocument(document) {
+function findAlmadarBin() {
+  if (workspaceRoot) {
+    const localBin = path.join(workspaceRoot, "node_modules", ".bin", "almadar");
+    if (fs.existsSync(localBin)) return localBin;
+  }
+  return "almadar";
+}
+function runValidate(filePath) {
+  return new Promise((resolve) => {
+    const bin = findAlmadarBin();
+    execFile(bin, ["validate", "--json", filePath], {
+      cwd: workspaceRoot ?? path.dirname(filePath),
+      timeout: 3e4,
+      maxBuffer: 1024 * 1024
+    }, (error, stdout, stderr) => {
+      try {
+        const result = JSON.parse(stdout);
+        resolve(result);
+      } catch {
+        connection.console.error(
+          `OrbLSP: almadar validate failed: ${error?.message ?? stderr}`
+        );
+        resolve({
+          success: false,
+          valid: false,
+          errors: [{
+            code: "CLI_ERROR",
+            path: "",
+            message: `Validation CLI error: ${error?.message ?? "unknown error"}`
+          }]
+        });
+      }
+    });
+  });
+}
+async function validateOrbDocument(document) {
   const orbContent = document.getText();
   if (!orbContent.trim()) {
     connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
     return;
   }
-  const virtualPath = getVirtualPath(document.uri);
-  const virtualContent = TS_PREFIX + orbContent + TS_SUFFIX;
-  virtualFiles.set(virtualPath, virtualContent);
-  const service = getLanguageService(virtualPath);
-  const semanticDiags = service.getSemanticDiagnostics(virtualPath);
-  const syntacticDiags = service.getSyntacticDiagnostics(virtualPath);
-  const allDiags = [...syntacticDiags, ...semanticDiags];
-  const diagnostics = [];
-  for (const diag of allDiags) {
-    if (diag.start === void 0 || diag.length === void 0) continue;
-    if (isDiagnosticInWrapper(diag)) continue;
-    const sourceFile = service.getProgram()?.getSourceFile(virtualPath);
-    if (!sourceFile) continue;
-    const startPos = ts.getLineAndCharacterOfPosition(sourceFile, diag.start);
-    const endPos = ts.getLineAndCharacterOfPosition(
-      sourceFile,
-      diag.start + diag.length
-    );
-    if (startPos.line < WRAPPER_LINE_OFFSET) continue;
-    const orbStartLine = startPos.line - WRAPPER_LINE_OFFSET;
-    const orbStartChar = orbStartLine === 0 ? Math.max(0, startPos.character - WRAPPER_COL_OFFSET) : startPos.character;
-    const orbEndLine = endPos.line - WRAPPER_LINE_OFFSET;
-    const orbEndChar = orbEndLine === 0 ? Math.max(0, endPos.character - WRAPPER_COL_OFFSET) : endPos.character;
-    const message = ts.flattenDiagnosticMessageText(
-      diag.messageText,
-      "\n"
-    ).replace(/_orbital/g, ".orb file");
-    const severity = diag.category === ts.DiagnosticCategory.Error ? DiagnosticSeverity.Error : diag.category === ts.DiagnosticCategory.Warning ? DiagnosticSeverity.Warning : DiagnosticSeverity.Information;
-    diagnostics.push({
-      range: {
-        start: { line: Math.max(0, orbStartLine), character: Math.max(0, orbStartChar) },
-        end: { line: Math.max(0, orbEndLine), character: Math.max(0, orbEndChar) }
-      },
-      message,
-      severity,
-      source: "almadar-orb",
-      code: diag.code
-    });
+  const tmpDir = os.tmpdir();
+  const tmpFile = path.join(tmpDir, `orb-lsp-${process.pid}-${Date.now()}.orb`);
+  try {
+    fs.writeFileSync(tmpFile, orbContent, "utf-8");
+    const result = await runValidate(tmpFile);
+    const diagnostics = [];
+    if (result.errors) {
+      for (const err of result.errors) {
+        diagnostics.push(makeDiagnostic(
+          orbContent,
+          err,
+          DiagnosticSeverity.Error
+        ));
+      }
+    }
+    if (result.warnings) {
+      for (const warn of result.warnings) {
+        diagnostics.push(makeDiagnostic(
+          orbContent,
+          warn,
+          DiagnosticSeverity.Warning
+        ));
+      }
+    }
+    connection.sendDiagnostics({ uri: document.uri, diagnostics });
+  } finally {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {
+    }
   }
-  connection.sendDiagnostics({ uri: document.uri, diagnostics });
+}
+function makeDiagnostic(orbContent, item, severity) {
+  const pos = jsonPathToPosition(orbContent, item.path);
+  const lines = orbContent.split("\n");
+  const lineText = lines[pos.line] ?? "";
+  const endChar = lineText.length;
+  let message = item.message;
+  if (item.suggestion) {
+    message += `
+\u{1F4A1} ${item.suggestion}`;
+  }
+  return {
+    range: {
+      start: { line: pos.line, character: pos.character },
+      end: { line: pos.line, character: endChar }
+    },
+    message,
+    severity,
+    source: "almadar",
+    code: item.code
+  };
 }
 documents.onDidChangeContent((change) => {
-  validateOrbDocument(change.document);
+  const uri = change.document.uri;
+  const existing = debounceTimers.get(uri);
+  if (existing) clearTimeout(existing);
+  debounceTimers.set(uri, setTimeout(() => {
+    debounceTimers.delete(uri);
+    validateOrbDocument(change.document);
+  }, DEBOUNCE_MS));
 });
 documents.onDidClose((event) => {
-  const virtualPath = getVirtualPath(event.document.uri);
-  virtualFiles.delete(virtualPath);
+  const timer = debounceTimers.get(event.document.uri);
+  if (timer) clearTimeout(timer);
+  debounceTimers.delete(event.document.uri);
   connection.sendDiagnostics({ uri: event.document.uri, diagnostics: [] });
 });
 documents.listen(connection);
 connection.listen();
-connection.console.log("Almadar OrbLSP started");
+connection.console.log("Almadar OrbLSP started (CLI mode)");
+export {
+  jsonPathToPosition
+};
 //# sourceMappingURL=server.js.map

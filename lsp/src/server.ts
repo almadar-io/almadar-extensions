@@ -21,6 +21,7 @@ import {
 } from 'vscode-languageserver/node.js';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
+import { jsonPathToPosition } from './json-path.js';
 import { execFile } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
