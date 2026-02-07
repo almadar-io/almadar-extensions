@@ -1,0 +1,28 @@
+{
+    "name": "@almadar/orb-lsp",
+    "version": "1.0.0",
+    "description": "Language Server Protocol proxy for .orb files — wraps content as TypeScript for validation",
+    "type": "module",
+    "main": "./dist/server.js",
+    "bin": {
+        "orb-lsp": "./bin/orb-lsp.js"
+    },
+    "scripts": {
+        "build": "tsup",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "vscode-languageserver": "^9.0.0",
+        "vscode-languageserver-textdocument": "^1.0.0",
+        "typescript": "^5.4.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18.0.0",
+        "tsup": "^8.0.0"
+    },
+    "files": [
+        "dist",
+        "bin"
+    ],
+    "license": "MIT"
+}
