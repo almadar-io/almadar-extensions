@@ -22,7 +22,8 @@ import {
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { jsonPathToPosition } from './json-path.js';
-import { execFile } from 'child_process';
+import { execFile, execFileSync } from 'child_process';
+import { createRequire } from 'module';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -84,21 +85,94 @@ interface ValidateResult {
     }>;
 }
 
+// ============================================================================
+// Binary Resolution
+// ============================================================================
+
+const BINARY_NAME = process.platform === 'win32' ? 'almadar.exe' : 'almadar';
+const PLATFORM_PACKAGE: Record<string, string> = {
+    'darwin-x64': '@almadar/cli-darwin-x64',
+    'darwin-arm64': '@almadar/cli-darwin-arm64',
+    'linux-x64': '@almadar/cli-linux-x64',
+    'linux-arm64': '@almadar/cli-linux-arm64',
+    'win32-x64': '@almadar/cli-windows-x64',
+};
+
+let _cachedBinaryPath: string | null | undefined;
+
+function resolveAlmadarBinary(): string | null {
+    if (_cachedBinaryPath !== undefined) return _cachedBinaryPath;
+
+    const packageName = PLATFORM_PACKAGE[`${process.platform}-${process.arch}`];
+    if (!packageName) {
+        _cachedBinaryPath = null;
+        return null;
+    }
+
+    // Strategy 1: require.resolve to find the platform package
+    try {
+        const require = createRequire(import.meta.url);
+        const pkgJson = require.resolve(`${packageName}/package.json`);
+        const binaryPath = path.join(path.dirname(pkgJson), BINARY_NAME);
+        if (fs.existsSync(binaryPath)) {
+            _cachedBinaryPath = binaryPath;
+            return binaryPath;
+        }
+    } catch { /* not found via require */ }
+
+    // Strategy 2: Walk up node_modules from workspace root
+    const searchRoots = [workspaceRoot, process.cwd(), path.dirname(import.meta.url.replace('file://', ''))].filter(Boolean) as string[];
+    for (const root of searchRoots) {
+        let dir = root;
+        for (let i = 0; i < 6; i++) {
+            const candidate = path.join(dir, 'node_modules', packageName, BINARY_NAME);
+            if (fs.existsSync(candidate)) {
+                _cachedBinaryPath = candidate;
+                return candidate;
+            }
+            const parent = path.dirname(dir);
+            if (parent === dir) break;
+            dir = parent;
+        }
+    }
+
+    // Strategy 3: Check if 'almadar' is on PATH
+    try {
+        execFileSync('almadar', ['--version'], { timeout: 5000, stdio: 'ignore' });
+        _cachedBinaryPath = 'almadar';
+        return 'almadar';
+    } catch { /* not on PATH */ }
+
+    _cachedBinaryPath = null;
+    return null;
+}
+
 function runValidate(filePath: string): Promise<ValidateResult> {
     return new Promise((resolve) => {
-        // Use npx to run @almadar/cli (it's not installed in .bin directly)
-        const npxPath = 'npx';
-        execFile(npxPath, ['-y', '@almadar/cli', 'validate', '--json', filePath], {
+        const binaryPath = resolveAlmadarBinary();
+
+        if (!binaryPath) {
+            resolve({
+                success: false,
+                valid: false,
+                errors: [{
+                    code: 'CLI_NOT_FOUND',
+                    path: '',
+                    message: 'Almadar CLI binary not found. Install with: npm install -g @almadar/cli',
+                }],
+            });
+            return;
+        }
+
+        execFile(binaryPath, ['validate', '--json', filePath], {
             cwd: workspaceRoot ?? path.dirname(filePath),
             timeout: 30_000,
             maxBuffer: 1024 * 1024,
         }, (error, stdout, stderr) => {
             try {
-                // The CLI returns JSON on stdout even on validation failures
                 const result = JSON.parse(stdout) as ValidateResult;
                 resolve(result);
             } catch {
-                // If the CLI itself failed (not found, crash, etc.)
                 connection.console.error(
                     `OrbLSP: almadar validate failed: ${error?.message ?? stderr}`
                 );
