@@ -23,7 +23,6 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { jsonPathToPosition } from './json-path.js';
 import { execFile, execFileSync } from 'child_process';
-import { createRequire } from 'module';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -110,8 +109,8 @@ function resolveAlmadarBinary(): string | null {
     }
 
     // Strategy 1: require.resolve to find the platform package
+    // Note: `require` is provided by tsup banner via createRequire(import.meta.url)
     try {
-        const require = createRequire(import.meta.url);
         const pkgJson = require.resolve(`${packageName}/package.json`);
         const binaryPath = path.join(path.dirname(pkgJson), BINARY_NAME);
         if (fs.existsSync(binaryPath)) {
