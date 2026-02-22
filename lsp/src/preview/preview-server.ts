@@ -1,7 +1,7 @@
 /**
  * PreviewServer — HTTP + raw WebSocket server for live RTL preview.
  *
- * Embeds inside the LSP process, binds to 127.0.0.1:0 (auto-assigned port),
+ * Embeds inside the LSP process, binds to localhost:0 (auto-assigned port),
  * serves rendered HTML previews, and pushes live updates via WebSocket.
  *
  * Zero external dependencies — uses Node built-in `http` and `crypto`.
@@ -125,17 +125,19 @@ export class PreviewServer {
         this.server.on('upgrade', this.handleUpgrade.bind(this));
     }
 
-    /** Start listening on 127.0.0.1:0 and write the port file */
+    /** Start listening on loopback:0 (dual-stack IPv4+IPv6) and write the port file */
     async start(): Promise<number> {
         // Clean up stale port files from dead processes
         this.cleanStalePortFiles();
 
         return new Promise((resolve, reject) => {
-            this.server.listen(0, '127.0.0.1', () => {
+            // Bind to '::' for dual-stack (IPv4 + IPv6) so browsers using
+            // either localhost→::1 or localhost→127.0.0.1 can connect.
+            this.server.listen(0, '::', () => {
                 const addr = this.server.address();
                 if (addr && typeof addr === 'object') {
                     this.port = addr.port;
-                    this.log(`PreviewServer listening on http://127.0.0.1:${this.port}`);
+                    this.log(`PreviewServer listening on http://localhost:${this.port}`);
 
                     // Write port file (with trailing newline for clean cat output)
                     try {
@@ -269,16 +271,19 @@ export class PreviewServer {
     // WebSocket upgrade
     // -----------------------------------------------------------------------
 
-    private handleUpgrade(req: http.IncomingMessage, socket: net.Socket): void {
+    private handleUpgrade(req: http.IncomingMessage, socket: net.Socket, head: Buffer): void {
+        this.log(`WS upgrade request: ${req.url}`);
         const url = new URL(req.url ?? '/', `http://localhost:${this.port}`);
 
         if (url.pathname !== '/ws') {
+            this.log('WS upgrade rejected: wrong path');
             socket.destroy();
             return;
         }
 
         const docUri = url.searchParams.get('doc');
         if (!docUri) {
+            this.log('WS upgrade rejected: no doc param');
             socket.destroy();
             return;
         }
@@ -286,6 +291,7 @@ export class PreviewServer {
         // WebSocket handshake
         const key = req.headers['sec-websocket-key'];
         if (!key) {
+            this.log('WS upgrade rejected: no sec-websocket-key');
             socket.destroy();
             return;
         }
@@ -295,20 +301,23 @@ export class PreviewServer {
             .update(key + '258EAFA5-E914-47DA-95CA-5AB9B140E115')
             .digest('base64');
 
-        socket.write(
+        const handshake =
             'HTTP/1.1 101 Switching Protocols\r\n' +
             'Upgrade: websocket\r\n' +
             'Connection: Upgrade\r\n' +
             `Sec-WebSocket-Accept: ${acceptKey}\r\n` +
-            '\r\n',
-        );
+            '\r\n';
+
+        socket.write(handshake);
+        this.log(`WS handshake sent for: ${docUri}`);
 
         const client: WsClient = { socket, docUri };
         this.clients.push(client);
-        this.log(`WS client connected for: ${docUri}`);
 
         // Handle incoming frames (pings, close)
-        let buffer = Buffer.alloc(0);
+        // Start with the head buffer — it may contain initial frame data
+        let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
+
         socket.on('data', (chunk: Buffer) => {
             buffer = Buffer.concat([buffer, chunk]);
             while (buffer.length > 0) {
@@ -340,7 +349,8 @@ export class PreviewServer {
             this.log(`WS client disconnected for: ${docUri}`);
         });
 
-        socket.on('error', () => {
+        socket.on('error', (err) => {
+            this.log(`WS socket error for ${docUri}: ${err.message}`);
             this.clients = this.clients.filter((c) => c !== client);
         });
     }

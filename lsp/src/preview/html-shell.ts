@@ -14,12 +14,11 @@ import { AR_LABELS } from './arabic-keys.js';
 /**
  * Generate the full HTML page.
  *
- * @param port      Preview server port
+ * @param _port     Preview server port (unused — WS URL derived from location.host)
  * @param docUri    The document URI (for WS subscription)
  * @param content   Initial rendered HTML content
  */
-export function htmlShell(port: number, docUri: string, content: string): string {
-    const wsUrl = `ws://localhost:${port}/ws?doc=${encodeURIComponent(docUri)}`;
+export function htmlShell(_port: number, docUri: string, content: string): string {
 
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -374,7 +373,8 @@ em { color: var(--text-muted); font-style: italic; }
 <div id="content">${content}</div>
 <script>
 (function() {
-  var wsUrl = ${JSON.stringify(wsUrl)};
+  var docUri = ${JSON.stringify(docUri)};
+  var wsUrl = 'ws://' + location.host + '/ws?doc=' + encodeURIComponent(docUri);
   var statusEl = document.getElementById('status');
   var contentEl = document.getElementById('content');
   var ws = null;
@@ -383,9 +383,11 @@ em { color: var(--text-muted); font-style: italic; }
 
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
+    console.log('[almadar-preview] connecting WS:', wsUrl);
     ws = new WebSocket(wsUrl);
 
     ws.onopen = function() {
+      console.log('[almadar-preview] WS connected');
       statusEl.textContent = ${JSON.stringify(AR_LABELS.connected)};
       statusEl.className = 'connected';
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
@@ -401,10 +403,11 @@ em { color: var(--text-muted); font-style: italic; }
         } else if (msg.type === 'closed') {
           contentEl.innerHTML = '<div class="closed-message">${AR_LABELS.documentClosed}</div>';
         }
-      } catch(e) { console.error('WS parse error', e); }
+      } catch(e) { console.error('[almadar-preview] WS parse error', e); }
     };
 
-    ws.onclose = function() {
+    ws.onclose = function(evt) {
+      console.log('[almadar-preview] WS closed, code:', evt.code, 'reason:', evt.reason);
       statusEl.textContent = ${JSON.stringify(AR_LABELS.disconnected)};
       statusEl.className = 'disconnected';
       if (!reconnectTimer) {
@@ -412,8 +415,8 @@ em { color: var(--text-muted); font-style: italic; }
       }
     };
 
-    ws.onerror = function() {
-      ws.close();
+    ws.onerror = function(evt) {
+      console.error('[almadar-preview] WS error:', evt);
     };
   }
 

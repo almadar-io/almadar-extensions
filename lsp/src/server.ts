@@ -68,7 +68,7 @@ connection.onInitialize((params: InitializeParams) => {
 
     // Start the preview server (non-blocking)
     previewServer.start().then((port) => {
-        connection.console.log(`RTL Preview: http://127.0.0.1:${port}/preview?doc={uri}`);
+        connection.console.log(`RTL Preview: http://localhost:${port}/preview?doc={uri}`);
     }).catch((err) => {
         connection.console.error(`PreviewServer failed to start: ${err}`);
     });
@@ -85,7 +85,7 @@ connection.onRequest('almadar/previewUrl', (params: { uri: string }) => {
     const port = previewServer.getPort();
     if (!port) return { url: null };
     return {
-        url: `http://127.0.0.1:${port}/preview?doc=${encodeURIComponent(params.uri)}`,
+        url: `http://localhost:${port}/preview?doc=${encodeURIComponent(params.uri)}`,
     };
 });
 
