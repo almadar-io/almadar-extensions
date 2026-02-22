@@ -380,47 +380,18 @@ em { color: var(--text-muted); font-style: italic; }
   var ws = null;
   var reconnectTimer = null;
   var RECONNECT_MS = 2000;
-  var connectCount = 0;
-
-  console.log('[almadar-preview] page loaded, location.host =', location.host);
-  console.log('[almadar-preview] wsUrl =', wsUrl);
-
-  // Test: can we even reach the server via fetch?
-  fetch('/health').then(function(r) {
-    return r.json();
-  }).then(function(d) {
-    console.log('[almadar-preview] HTTP /health OK:', JSON.stringify(d));
-  }).catch(function(e) {
-    console.error('[almadar-preview] HTTP /health FAILED:', e);
-  });
 
   function connect() {
-    connectCount++;
-    var attempt = connectCount;
-    if (ws) {
-      console.log('[almadar-preview] [' + attempt + '] closing previous WS, readyState=' + ws.readyState);
-      try { ws.close(); } catch(e) {}
-    }
-    console.log('[almadar-preview] [' + attempt + '] creating new WebSocket:', wsUrl);
-
-    try {
-      ws = new WebSocket(wsUrl);
-    } catch(e) {
-      console.error('[almadar-preview] [' + attempt + '] WebSocket constructor threw:', e);
-      return;
-    }
-
-    console.log('[almadar-preview] [' + attempt + '] WebSocket created, readyState=' + ws.readyState);
+    if (ws) { try { ws.close(); } catch(e) {} }
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = function() {
-      console.log('[almadar-preview] [' + attempt + '] WS OPEN! readyState=' + ws.readyState);
       statusEl.textContent = ${JSON.stringify(AR_LABELS.connected)};
       statusEl.className = 'connected';
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     };
 
     ws.onmessage = function(evt) {
-      console.log('[almadar-preview] [' + attempt + '] WS message received, length=' + evt.data.length);
       try {
         var msg = JSON.parse(evt.data);
         if (msg.type === 'update') {
@@ -430,11 +401,10 @@ em { color: var(--text-muted); font-style: italic; }
         } else if (msg.type === 'closed') {
           contentEl.innerHTML = '<div class="closed-message">${AR_LABELS.documentClosed}</div>';
         }
-      } catch(e) { console.error('[almadar-preview] WS parse error', e); }
+      } catch(e) { /* ignore */ }
     };
 
-    ws.onclose = function(evt) {
-      console.log('[almadar-preview] [' + attempt + '] WS CLOSE code=' + evt.code + ' reason="' + evt.reason + '" wasClean=' + evt.wasClean);
+    ws.onclose = function() {
       statusEl.textContent = ${JSON.stringify(AR_LABELS.disconnected)};
       statusEl.className = 'disconnected';
       if (!reconnectTimer) {
@@ -442,17 +412,7 @@ em { color: var(--text-muted); font-style: italic; }
       }
     };
 
-    ws.onerror = function(evt) {
-      console.error('[almadar-preview] [' + attempt + '] WS ERROR, readyState=' + ws.readyState, evt);
-    };
-
-    // Poll readyState for 2 seconds to see what happens
-    var polls = 0;
-    var pollTimer = setInterval(function() {
-      if (!ws || polls > 10) { clearInterval(pollTimer); return; }
-      console.log('[almadar-preview] [' + attempt + '] poll readyState=' + ws.readyState + ' (' + ['CONNECTING','OPEN','CLOSING','CLOSED'][ws.readyState] + ') at ' + (polls * 200) + 'ms');
-      polls++;
-    }, 200);
+    ws.onerror = function() {};
   }
 
   connect();
