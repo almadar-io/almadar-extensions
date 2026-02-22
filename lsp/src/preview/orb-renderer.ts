@@ -253,13 +253,13 @@ export function renderOrb(text: string): string {
     // Orbitals
     const orbitals = gArr(schema, k.orbitals, k.orbitals);
     for (const orbital of orbitals) {
-        parts.push(renderOrbital(orbital, k, lbl));
+        parts.push(renderOrbital(orbital, k, lbl, isAr));
     }
 
     return parts.join('\n');
 }
 
-function renderOrbital(orbital: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): string {
+function renderOrbital(orbital: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS, isAr: boolean): string {
     const parts: string[] = [];
     const name = gStr(orbital, k.name, k.name);
 
@@ -276,7 +276,7 @@ function renderOrbital(orbital: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): 
     if (traits.length > 0) {
         parts.push(`<div class="traits-section"><h3>${lbl.traits}</h3>`);
         for (const trait of traits) {
-            parts.push(renderTrait(trait, k, lbl));
+            parts.push(renderTrait(trait, k, lbl, isAr));
         }
         parts.push('</div>');
     }
@@ -354,7 +354,7 @@ function renderEntity(entity: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): st
     return parts.join('\n');
 }
 
-function renderTrait(trait: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): string {
+function renderTrait(trait: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS, isAr: boolean): string {
     const parts: string[] = [];
     const name = gStr(trait, k.name, k.name);
     const category = gStr(trait, k.category, k.category);
@@ -370,14 +370,14 @@ function renderTrait(trait: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): stri
     // State machine
     const sm = gObj(trait, k.stateMachine, k.stateMachine);
     if (sm) {
-        parts.push(renderStateMachine(sm, k, lbl));
+        parts.push(renderStateMachine(sm, k, lbl, isAr));
     }
 
     parts.push('</div>');
     return parts.join('\n');
 }
 
-function renderStateMachine(sm: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): string {
+function renderStateMachine(sm: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS, isAr: boolean): string {
     const parts: string[] = [];
 
     // States as pills
@@ -425,7 +425,7 @@ function renderStateMachine(sm: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): 
     if (transitions.length > 0) {
         parts.push(`<div class="sm-section"><span class="sm-label">${lbl.transitions}:</span>`);
         for (const tr of transitions) {
-            parts.push(renderTransition(tr, k, lbl));
+            parts.push(renderTransition(tr, k, lbl, isAr));
         }
         parts.push('</div>');
     }
@@ -433,7 +433,7 @@ function renderStateMachine(sm: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): 
     return parts.join('\n');
 }
 
-function renderTransition(tr: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): string {
+function renderTransition(tr: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS, isAr: boolean): string {
     const parts: string[] = [];
     const from = gStr(tr, k.from, k.from);
     const to = gStr(tr, k.to, k.to);
@@ -441,6 +441,9 @@ function renderTransition(tr: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): st
     const principle = gStr(tr, k.principle, k.principle);
     const guards = g(tr, k.guards, k.guards);
     const effects = g(tr, k.effects, k.effects);
+
+    // For English schemas, S-expressions render LTR; Arabic schemas stay RTL
+    const sexprCls = isAr ? 'sexpr' : 'sexpr sexpr-ltr';
 
     parts.push(`<div class="transition-block">`);
 
@@ -463,7 +466,7 @@ function renderTransition(tr: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): st
     if (Array.isArray(guards) && guards.length > 0) {
         parts.push(`<div class="guards-block"><span class="guard-label">${lbl.guards}:</span>`);
         for (const guard of guards) {
-            parts.push(`<pre class="sexpr guard-sexpr">${renderSExpr(guard, 1)}</pre>`);
+            parts.push(`<pre class="${sexprCls} guard-sexpr">${renderSExpr(guard, 1)}</pre>`);
         }
         parts.push('</div>');
     }
@@ -472,7 +475,7 @@ function renderTransition(tr: SchemaObj, k: LangKeys, lbl: typeof AR_LABELS): st
     if (Array.isArray(effects) && effects.length > 0) {
         parts.push(`<div class="effects-block"><span class="effect-label">${lbl.effects}:</span>`);
         for (const effect of effects) {
-            parts.push(`<pre class="sexpr effect-sexpr">${renderSExpr(effect, 1)}</pre>`);
+            parts.push(`<pre class="${sexprCls} effect-sexpr">${renderSExpr(effect, 1)}</pre>`);
         }
         parts.push('</div>');
     }

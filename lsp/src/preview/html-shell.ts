@@ -265,8 +265,12 @@ body {
   border-right: 2px solid var(--border);
   overflow-x: auto;
   white-space: pre;
+}
+.sexpr.sexpr-ltr {
   direction: ltr;
   text-align: left;
+  border-right: none;
+  border-left: 2px solid var(--border);
 }
 .sexpr-op { color: var(--brass); font-weight: 700; }
 .sexpr-binding { color: var(--sky); }

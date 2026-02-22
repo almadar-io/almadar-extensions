@@ -127,6 +127,9 @@ export class PreviewServer {
 
     /** Start listening on 127.0.0.1:0 and write the port file */
     async start(): Promise<number> {
+        // Clean up stale port files from dead processes
+        this.cleanStalePortFiles();
+
         return new Promise((resolve, reject) => {
             this.server.listen(0, '127.0.0.1', () => {
                 const addr = this.server.address();
@@ -134,9 +137,9 @@ export class PreviewServer {
                     this.port = addr.port;
                     this.log(`PreviewServer listening on http://127.0.0.1:${this.port}`);
 
-                    // Write port file
+                    // Write port file (with trailing newline for clean cat output)
                     try {
-                        fs.writeFileSync(this.portFilePath, String(this.port), 'utf-8');
+                        fs.writeFileSync(this.portFilePath, this.port + '\n', 'utf-8');
                         this.log(`Port file: ${this.portFilePath}`);
                     } catch (e) {
                         this.log(`Failed to write port file: ${e}`);
@@ -181,6 +184,31 @@ export class PreviewServer {
 
         // Remove port file
         try { fs.unlinkSync(this.portFilePath); } catch { /* ignore */ }
+    }
+
+    /** Remove port files from previous processes that are no longer running */
+    private cleanStalePortFiles(): void {
+        const tmpDir = path.dirname(this.portFilePath);
+        try {
+            const files = fs.readdirSync(tmpDir);
+            for (const file of files) {
+                const match = file.match(/^almadar-preview-(\d+)\.port$/);
+                if (!match) continue;
+                const pid = Number(match[1]);
+                if (pid === process.pid) continue;
+                // Check if the process is still alive
+                try {
+                    process.kill(pid, 0); // signal 0 = existence check
+                } catch {
+                    // Process is dead — remove its stale port file
+                    const staleFile = path.join(tmpDir, file);
+                    try {
+                        fs.unlinkSync(staleFile);
+                        this.log(`Cleaned stale port file: ${staleFile}`);
+                    } catch { /* ignore */ }
+                }
+            }
+        } catch { /* ignore errors reading tmpdir */ }
     }
 
     // -----------------------------------------------------------------------
