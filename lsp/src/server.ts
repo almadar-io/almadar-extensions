@@ -22,6 +22,7 @@ import {
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { jsonPathToPosition } from './json-path.js';
+import { PreviewServer } from './preview/preview-server.js';
 import { execFile, execFileSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -46,6 +47,17 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // Workspace root (resolved on initialization)
 let workspaceRoot: string | null = null;
 
+// RTL preview server (HTTP + WebSocket)
+const previewServer = new PreviewServer((msg) => connection.console.log(msg));
+
+/** File extensions that support live preview */
+const PREVIEWABLE_EXTENSIONS = ['.orb', '.md'];
+
+function isPreviewable(uri: string): boolean {
+    const lower = uri.toLowerCase();
+    return PREVIEWABLE_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
 connection.onInitialize((params: InitializeParams) => {
     if (params.rootUri) {
         workspaceRoot = decodeURIComponent(params.rootUri.replace('file://', ''));
@@ -54,10 +66,26 @@ connection.onInitialize((params: InitializeParams) => {
     }
     connection.console.log(`OrbLSP initialized. Workspace root: ${workspaceRoot}`);
 
+    // Start the preview server (non-blocking)
+    previewServer.start().then((port) => {
+        connection.console.log(`RTL Preview: http://127.0.0.1:${port}/preview?doc={uri}`);
+    }).catch((err) => {
+        connection.console.error(`PreviewServer failed to start: ${err}`);
+    });
+
     return {
         capabilities: {
             textDocumentSync: TextDocumentSyncKind.Full,
         },
+    };
+});
+
+// Custom request: get preview URL for a document
+connection.onRequest('almadar/previewUrl', (params: { uri: string }) => {
+    const port = previewServer.getPort();
+    if (!port) return { url: null };
+    return {
+        url: `http://127.0.0.1:${port}/preview?doc=${encodeURIComponent(params.uri)}`,
     };
 });
 
@@ -277,15 +305,27 @@ documents.onDidChangeContent((change) => {
 
     debounceTimers.set(uri, setTimeout(() => {
         debounceTimers.delete(uri);
-        validateOrbDocument(change.document);
+        // Validate .orb files
+        if (uri.toLowerCase().endsWith('.orb')) {
+            validateOrbDocument(change.document);
+        }
+        // Push preview update for all previewable files
+        if (isPreviewable(uri)) {
+            previewServer.notifyDocumentChanged(uri, change.document.getText());
+        }
     }, DEBOUNCE_MS));
 });
 
 documents.onDidClose((event) => {
-    const timer = debounceTimers.get(event.document.uri);
+    const uri = event.document.uri;
+    const timer = debounceTimers.get(uri);
     if (timer) clearTimeout(timer);
-    debounceTimers.delete(event.document.uri);
-    connection.sendDiagnostics({ uri: event.document.uri, diagnostics: [] });
+    debounceTimers.delete(uri);
+    connection.sendDiagnostics({ uri, diagnostics: [] });
+    // Notify preview server that the document was closed
+    if (isPreviewable(uri)) {
+        previewServer.notifyDocumentClosed(uri);
+    }
 });
 
 // ============================================================================
