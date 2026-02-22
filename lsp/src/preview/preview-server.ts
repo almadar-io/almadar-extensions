@@ -123,6 +123,30 @@ export class PreviewServer {
         );
         this.server = http.createServer(this.handleHttp.bind(this));
         this.server.on('upgrade', this.handleUpgrade.bind(this));
+
+        // TRACE: log every raw TCP connection
+        this.server.on('connection', (socket: net.Socket) => {
+            const remote = `${socket.remoteAddress}:${socket.remotePort}`;
+            this.log(`[TRACE] TCP connection from ${remote}`);
+            socket.on('error', (err) => {
+                this.log(`[TRACE] TCP socket error from ${remote}: ${err.message}`);
+            });
+        });
+
+        // TRACE: log server-level errors
+        this.server.on('error', (err) => {
+            this.log(`[TRACE] Server error: ${err.message}`);
+        });
+
+        // TRACE: log clientError (malformed requests, TLS on plain HTTP, etc.)
+        this.server.on('clientError', (err, socket) => {
+            this.log(`[TRACE] Client error: ${err.message}`);
+            if (socket.writable) {
+                socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+            }
+        });
+
+        this.log('[TRACE] PreviewServer constructor complete');
     }
 
     /** Start listening on loopback:0 (dual-stack IPv4+IPv6) and write the port file */
@@ -131,13 +155,18 @@ export class PreviewServer {
         this.cleanStalePortFiles();
 
         return new Promise((resolve, reject) => {
+            this.log('[TRACE] About to call server.listen(0, "::")');
+
             // Bind to '::' for dual-stack (IPv4 + IPv6) so browsers using
             // either localhost→::1 or localhost→127.0.0.1 can connect.
             this.server.listen(0, '::', () => {
                 const addr = this.server.address();
+                this.log(`[TRACE] server.address() = ${JSON.stringify(addr)}`);
+
                 if (addr && typeof addr === 'object') {
                     this.port = addr.port;
                     this.log(`PreviewServer listening on http://localhost:${this.port}`);
+                    this.log(`[TRACE] Address family: ${addr.family}, address: ${addr.address}`);
 
                     // Write port file (with trailing newline for clean cat output)
                     try {
@@ -152,7 +181,10 @@ export class PreviewServer {
                     reject(new Error('Failed to bind'));
                 }
             });
-            this.server.on('error', reject);
+            this.server.on('error', (err) => {
+                this.log(`[TRACE] Listen error: ${err.message}`);
+                reject(err);
+            });
         });
     }
 
@@ -165,6 +197,7 @@ export class PreviewServer {
     notifyDocumentChanged(uri: string, text: string): void {
         const html = this.renderDocument(uri, text);
         this.documents.set(uri, { uri, text, html });
+        this.log(`[TRACE] Document changed: ${uri} (${this.clients.length} WS clients total)`);
         this.pushToSubscribers(uri, { type: 'update', html });
     }
 
@@ -219,6 +252,8 @@ export class PreviewServer {
 
     private handleHttp(req: http.IncomingMessage, res: http.ServerResponse): void {
         const url = new URL(req.url ?? '/', `http://localhost:${this.port}`);
+        this.log(`[TRACE] HTTP ${req.method} ${url.pathname} from ${req.socket.remoteAddress}`);
+        this.log(`[TRACE] HTTP headers: ${JSON.stringify(req.headers)}`);
 
         if (url.pathname === '/health') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -254,6 +289,8 @@ export class PreviewServer {
             const content = doc?.html ?? `<div class="closed-message">${AR_LABELS.noContent}</div>`;
             const page = htmlShell(this.port, docUri, content);
 
+            this.log(`[TRACE] Serving preview page (${page.length} bytes) for: ${docUri}`);
+
             res.writeHead(200, {
                 'Content-Type': 'text/html; charset=utf-8',
                 'Cache-Control': 'no-store',
@@ -263,6 +300,7 @@ export class PreviewServer {
         }
 
         // 404
+        this.log(`[TRACE] 404 for path: ${url.pathname}`);
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
     }
@@ -272,18 +310,24 @@ export class PreviewServer {
     // -----------------------------------------------------------------------
 
     private handleUpgrade(req: http.IncomingMessage, socket: net.Socket, head: Buffer): void {
-        this.log(`WS upgrade request: ${req.url}`);
+        this.log(`[TRACE] === WS UPGRADE START ===`);
+        this.log(`[TRACE] WS upgrade URL: ${req.url}`);
+        this.log(`[TRACE] WS upgrade headers: ${JSON.stringify(req.headers)}`);
+        this.log(`[TRACE] WS head buffer length: ${head.length}`);
+        this.log(`[TRACE] WS socket remote: ${socket.remoteAddress}:${socket.remotePort}`);
+        this.log(`[TRACE] WS socket writable: ${socket.writable}, destroyed: ${socket.destroyed}`);
+
         const url = new URL(req.url ?? '/', `http://localhost:${this.port}`);
 
         if (url.pathname !== '/ws') {
-            this.log('WS upgrade rejected: wrong path');
+            this.log('[TRACE] WS upgrade REJECTED: wrong path');
             socket.destroy();
             return;
         }
 
         const docUri = url.searchParams.get('doc');
         if (!docUri) {
-            this.log('WS upgrade rejected: no doc param');
+            this.log('[TRACE] WS upgrade REJECTED: no doc param');
             socket.destroy();
             return;
         }
@@ -291,15 +335,19 @@ export class PreviewServer {
         // WebSocket handshake
         const key = req.headers['sec-websocket-key'];
         if (!key) {
-            this.log('WS upgrade rejected: no sec-websocket-key');
+            this.log('[TRACE] WS upgrade REJECTED: no sec-websocket-key');
             socket.destroy();
             return;
         }
+
+        this.log(`[TRACE] WS key: ${key}`);
 
         const acceptKey = crypto
             .createHash('sha1')
             .update(key + '258EAFA5-E914-47DA-95CA-5AB9B140E115')
             .digest('base64');
+
+        this.log(`[TRACE] WS accept key: ${acceptKey}`);
 
         const handshake =
             'HTTP/1.1 101 Switching Protocols\r\n' +
@@ -308,25 +356,34 @@ export class PreviewServer {
             `Sec-WebSocket-Accept: ${acceptKey}\r\n` +
             '\r\n';
 
-        socket.write(handshake);
-        this.log(`WS handshake sent for: ${docUri}`);
+        this.log(`[TRACE] WS sending handshake (${handshake.length} bytes)...`);
+
+        const writeResult = socket.write(handshake);
+        this.log(`[TRACE] WS socket.write() returned: ${writeResult}`);
+        this.log(`[TRACE] WS socket writable after write: ${socket.writable}, destroyed: ${socket.destroyed}`);
 
         const client: WsClient = { socket, docUri };
         this.clients.push(client);
+        this.log(`[TRACE] WS client added. Total clients: ${this.clients.length}`);
+        this.log(`[TRACE] === WS UPGRADE COMPLETE ===`);
 
         // Handle incoming frames (pings, close)
         // Start with the head buffer — it may contain initial frame data
         let buffer = head.length > 0 ? Buffer.from(head) : Buffer.alloc(0);
 
         socket.on('data', (chunk: Buffer) => {
+            this.log(`[TRACE] WS data received: ${chunk.length} bytes, opcode peek: 0x${chunk[0]?.toString(16)}`);
             buffer = Buffer.concat([buffer, chunk]);
             while (buffer.length > 0) {
                 const frame = readFrame(buffer);
                 if (!frame) break;
                 buffer = buffer.subarray(frame.bytesConsumed);
 
+                this.log(`[TRACE] WS frame: opcode=0x${frame.opcode.toString(16)}, payload=${frame.payload.length} bytes`);
+
                 if (frame.opcode === 0x08) {
                     // Close frame — echo it back
+                    this.log(`[TRACE] WS close frame received`);
                     const closeFrame = Buffer.alloc(2);
                     closeFrame[0] = 0x88; // FIN + close
                     closeFrame[1] = 0x00;
@@ -334,6 +391,7 @@ export class PreviewServer {
                     socket.end();
                 } else if (frame.opcode === 0x09) {
                     // Ping — respond with pong
+                    this.log(`[TRACE] WS ping received, sending pong`);
                     const pong = Buffer.alloc(2 + frame.payload.length);
                     pong[0] = 0x8a; // FIN + pong
                     pong[1] = frame.payload.length;
@@ -344,14 +402,19 @@ export class PreviewServer {
             }
         });
 
-        socket.on('close', () => {
+        socket.on('close', (hadError: boolean) => {
             this.clients = this.clients.filter((c) => c !== client);
-            this.log(`WS client disconnected for: ${docUri}`);
+            this.log(`[TRACE] WS socket closed for: ${docUri}, hadError: ${hadError}`);
         });
 
         socket.on('error', (err) => {
-            this.log(`WS socket error for ${docUri}: ${err.message}`);
+            this.log(`[TRACE] WS socket ERROR for ${docUri}: ${err.message}`);
+            this.log(`[TRACE] WS error stack: ${err.stack}`);
             this.clients = this.clients.filter((c) => c !== client);
+        });
+
+        socket.on('end', () => {
+            this.log(`[TRACE] WS socket END for: ${docUri}`);
         });
     }
 
@@ -374,6 +437,8 @@ export class PreviewServer {
     private pushToSubscribers(uri: string, message: Record<string, unknown>): void {
         const frame = buildTextFrame(JSON.stringify(message));
         const deadClients: WsClient[] = [];
+
+        this.log(`[TRACE] Pushing to subscribers of ${uri}: ${this.clients.filter(c => c.docUri === uri).length} matched of ${this.clients.length} total`);
 
         for (const client of this.clients) {
             if (client.docUri === uri) {
