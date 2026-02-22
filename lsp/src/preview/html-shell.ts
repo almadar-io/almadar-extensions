@@ -380,11 +380,13 @@ em { color: var(--text-muted); font-style: italic; }
 <script>
 (function() {
   var wsUrl = ${wsUrlExpr};
+  var isFollowMode = ${docUri ? 'false' : 'true'};
   var statusEl = document.getElementById('status');
   var contentEl = document.getElementById('content');
   var ws = null;
   var reconnectTimer = null;
   var RECONNECT_MS = 2000;
+  var currentUri = null;
 
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
@@ -400,6 +402,7 @@ em { color: var(--text-muted); font-style: italic; }
       try {
         var msg = JSON.parse(evt.data);
         if (msg.type === 'update' || msg.type === 'switch') {
+          if (msg.uri) currentUri = msg.uri;
           var scrollY = msg.type === 'update' ? window.scrollY : 0;
           contentEl.innerHTML = msg.html;
           window.scrollTo(0, scrollY);
@@ -421,6 +424,19 @@ em { color: var(--text-muted); font-style: italic; }
   }
 
   connect();
+
+  // Follow mode: poll /active every 2s to detect tab switches
+  if (isFollowMode) {
+    setInterval(function() {
+      fetch('/active').then(function(r) { return r.json(); }).then(function(data) {
+        if (data.uri && data.uri !== currentUri && data.html) {
+          currentUri = data.uri;
+          contentEl.innerHTML = data.html;
+          window.scrollTo(0, 0);
+        }
+      }).catch(function() {});
+    }, 2000);
+  }
 })();
 </script>
 </body>

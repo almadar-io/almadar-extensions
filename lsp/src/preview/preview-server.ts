@@ -213,18 +213,63 @@ export class PreviewServer {
             return;
         }
 
+        // Set the active document (called externally, e.g. from Zed task)
+        if (url.pathname === '/set-active' && req.method === 'POST') {
+            const fileUri = url.searchParams.get('doc');
+            if (fileUri) {
+                const html = this.getOrLoadDocument(fileUri);
+                if (html) {
+                    this.activeUri = fileUri;
+                    this.pushToFollowers({ type: 'switch', uri: fileUri, html });
+                    this.log(`Active document set to: ${fileUri}`);
+                }
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, activeUri: this.activeUri }));
+            return;
+        }
+
+        // Render any file by URI (loads from disk if not cached)
+        if (url.pathname === '/render') {
+            const fileUri = url.searchParams.get('doc');
+            if (!fileUri) {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Missing ?doc= parameter');
+                return;
+            }
+            const html = this.getOrLoadDocument(fileUri);
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+            });
+            res.end(JSON.stringify({ uri: fileUri, html }));
+            return;
+        }
+
+        // Follow-mode poll: returns current active URI + HTML + all known URIs
+        if (url.pathname === '/active') {
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+            });
+            const uri = this.activeUri ?? this.lastKnownUri();
+            const doc = uri ? this.documents.get(uri) : undefined;
+            res.end(JSON.stringify({
+                uri: uri ?? null,
+                html: doc?.html ?? null,
+                documents: Array.from(this.documents.keys()),
+            }));
+            return;
+        }
+
         if (url.pathname === '/preview') {
             const docUri = url.searchParams.get('doc');
 
-            // Follow mode (no doc param) — show the active document
+            // Follow mode (no doc param) — show the active document (or last known)
             if (!docUri) {
-                let content: string;
-                if (this.activeUri) {
-                    const doc = this.documents.get(this.activeUri);
-                    content = doc?.html ?? `<div class="closed-message">${AR_LABELS.noContent}</div>`;
-                } else {
-                    content = `<div class="closed-message">${AR_LABELS.noContent}</div>`;
-                }
+                const targetUri = this.activeUri ?? this.lastKnownUri();
+                const html = targetUri ? this.getOrLoadDocument(targetUri) : null;
+                const content = html ?? `<div class="closed-message">${AR_LABELS.noContent}</div>`;
                 const page = htmlShell(this.port, null, content);
 
                 res.writeHead(200, {
@@ -235,19 +280,9 @@ export class PreviewServer {
                 return;
             }
 
-            // Pinned mode — show a specific document
-            let doc = this.documents.get(docUri);
-            if (!doc) {
-                const filePath = this.uriToFilePath(docUri);
-                if (filePath && fs.existsSync(filePath)) {
-                    const text = fs.readFileSync(filePath, 'utf-8');
-                    const html = this.renderDocument(docUri, text);
-                    doc = { uri: docUri, text, html };
-                    this.documents.set(docUri, doc);
-                }
-            }
-
-            const content = doc?.html ?? `<div class="closed-message">${AR_LABELS.noContent}</div>`;
+            // Pinned mode — show a specific document (loads from disk if needed)
+            const html = this.getOrLoadDocument(docUri);
+            const content = html ?? `<div class="closed-message">${AR_LABELS.noContent}</div>`;
             const page = htmlShell(this.port, docUri, content);
 
             res.writeHead(200, {
@@ -265,6 +300,27 @@ export class PreviewServer {
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    /** Get rendered HTML for a document — from cache or load from disk */
+    private getOrLoadDocument(uri: string): string | null {
+        const cached = this.documents.get(uri);
+        if (cached) return cached.html;
+
+        const filePath = this.uriToFilePath(uri);
+        if (filePath && fs.existsSync(filePath)) {
+            const text = fs.readFileSync(filePath, 'utf-8');
+            const html = this.renderDocument(uri, text);
+            this.documents.set(uri, { uri, text, html });
+            return html;
+        }
+        return null;
+    }
+
+    /** Return the last known document URI (fallback when activeUri is null) */
+    private lastKnownUri(): string | null {
+        const keys = Array.from(this.documents.keys());
+        return keys.length > 0 ? keys[keys.length - 1] : null;
+    }
 
     private renderDocument(uri: string, text: string): string {
         const lowerUri = uri.toLowerCase();

@@ -68,7 +68,13 @@ connection.onInitialize((params: InitializeParams) => {
 
     // Start the preview server (non-blocking)
     previewServer.start().then((port) => {
-        connection.console.log(`RTL Preview: http://localhost:${port}/preview?doc={uri}`);
+        connection.console.log(`RTL Preview: http://localhost:${port}/preview`);
+        // Push all already-open documents to the preview server
+        for (const doc of documents.all()) {
+            if (isPreviewable(doc.uri)) {
+                previewServer.notifyDocumentChanged(doc.uri, doc.getText());
+            }
+        }
     }).catch((err) => {
         connection.console.error(`PreviewServer failed to start: ${err}`);
     });
@@ -298,14 +304,6 @@ function makeDiagnostic(
 // Document Events
 // ============================================================================
 
-// When a document is first opened, push it to the preview immediately
-documents.onDidOpen((event) => {
-    const uri = event.document.uri;
-    if (isPreviewable(uri)) {
-        previewServer.notifyDocumentChanged(uri, event.document.getText());
-    }
-});
-
 documents.onDidChangeContent((change) => {
     const uri = change.document.uri;
 
@@ -324,14 +322,6 @@ documents.onDidChangeContent((change) => {
             previewServer.notifyDocumentChanged(uri, change.document.getText());
         }
     }, DEBOUNCE_MS));
-});
-
-// When a document is saved, push update immediately (no debounce)
-documents.onDidSave((event) => {
-    const uri = event.document.uri;
-    if (isPreviewable(uri)) {
-        previewServer.notifyDocumentChanged(uri, event.document.getText());
-    }
 });
 
 documents.onDidClose((event) => {
