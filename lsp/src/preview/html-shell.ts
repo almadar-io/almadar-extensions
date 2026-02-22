@@ -6,6 +6,7 @@
  * - Al-Jazari palette: brass, crimson, lapis, sky-blue, gold, ivory
  * - WebSocket auto-reconnect with connection status badge
  * - Scroll position preservation across updates
+ * - Follow mode: auto-follows active editor file when docUri is null
  * - All CSS inline — zero external dependencies besides optional font
  */
 
@@ -15,10 +16,15 @@ import { AR_LABELS } from './arabic-keys.js';
  * Generate the full HTML page.
  *
  * @param _port     Preview server port (unused — WS URL derived from location.host)
- * @param docUri    The document URI (for WS subscription)
+ * @param docUri    The document URI for pinned mode, or null for follow mode
  * @param content   Initial rendered HTML content
  */
-export function htmlShell(_port: number, docUri: string, content: string): string {
+export function htmlShell(_port: number, docUri: string | null, content: string): string {
+
+    // In follow mode, WS connects without ?doc= param
+    const wsUrlExpr = docUri
+        ? `'ws://' + location.host + '/ws?doc=' + encodeURIComponent(${JSON.stringify(docUri)})`
+        : `'ws://' + location.host + '/ws'`;
 
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -373,8 +379,7 @@ em { color: var(--text-muted); font-style: italic; }
 <div id="content">${content}</div>
 <script>
 (function() {
-  var docUri = ${JSON.stringify(docUri)};
-  var wsUrl = 'ws://' + location.host + '/ws?doc=' + encodeURIComponent(docUri);
+  var wsUrl = ${wsUrlExpr};
   var statusEl = document.getElementById('status');
   var contentEl = document.getElementById('content');
   var ws = null;
@@ -394,8 +399,8 @@ em { color: var(--text-muted); font-style: italic; }
     ws.onmessage = function(evt) {
       try {
         var msg = JSON.parse(evt.data);
-        if (msg.type === 'update') {
-          var scrollY = window.scrollY;
+        if (msg.type === 'update' || msg.type === 'switch') {
+          var scrollY = msg.type === 'update' ? window.scrollY : 0;
           contentEl.innerHTML = msg.html;
           window.scrollTo(0, scrollY);
         } else if (msg.type === 'closed') {

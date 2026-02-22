@@ -4,6 +4,10 @@
  * Embeds inside the LSP process, binds to localhost:0 (auto-assigned port),
  * serves rendered HTML previews, and pushes live updates via WebSocket.
  *
+ * Supports two modes:
+ * - **Pinned**: `/preview?doc=<uri>` — locked to one document
+ * - **Follow**: `/preview` (no doc param) — auto-follows the active editor file
+ *
  * Uses the `ws` library for WebSocket handling.
  */
 
@@ -20,9 +24,12 @@ import { AR_LABELS } from './arabic-keys.js';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Sentinel value for clients that follow the active document */
+const FOLLOW = '__follow__';
+
 interface WsClient {
     ws: WebSocket;
-    docUri: string;
+    docUri: string; // document URI or FOLLOW
 }
 
 interface DocState {
@@ -43,6 +50,7 @@ export class PreviewServer {
     private port = 0;
     private clients: WsClient[] = [];
     private documents = new Map<string, DocState>();
+    private activeUri: string | null = null;
     private log: LogFn;
     private portFilePath: string;
 
@@ -63,24 +71,30 @@ export class PreviewServer {
                 return;
             }
 
-            const docUri = url.searchParams.get('doc');
-            if (!docUri) {
-                socket.destroy();
-                return;
-            }
+            // doc param is optional — without it, client enters follow mode
+            const docUri = url.searchParams.get('doc') ?? FOLLOW;
 
             this.wss.handleUpgrade(req, socket, head, (ws) => {
-                this.log(`WS client connected for: ${docUri}`);
+                const mode = docUri === FOLLOW ? 'follow' : 'pinned';
+                this.log(`WS client connected (${mode}): ${docUri === FOLLOW ? 'follow' : docUri}`);
                 const client: WsClient = { ws, docUri };
                 this.clients.push(client);
 
+                // In follow mode, immediately send the current active document
+                if (docUri === FOLLOW && this.activeUri) {
+                    const doc = this.documents.get(this.activeUri);
+                    if (doc) {
+                        ws.send(JSON.stringify({ type: 'switch', uri: this.activeUri, html: doc.html }));
+                    }
+                }
+
                 ws.on('close', () => {
                     this.clients = this.clients.filter((c) => c !== client);
-                    this.log(`WS client disconnected for: ${docUri}`);
+                    this.log(`WS client disconnected (${mode})`);
                 });
 
                 ws.on('error', (err) => {
-                    this.log(`WS error for ${docUri}: ${err.message}`);
+                    this.log(`WS error (${mode}): ${err.message}`);
                     this.clients = this.clients.filter((c) => c !== client);
                 });
             });
@@ -123,13 +137,26 @@ export class PreviewServer {
     notifyDocumentChanged(uri: string, text: string): void {
         const html = this.renderDocument(uri, text);
         this.documents.set(uri, { uri, text, html });
+
+        // Update active document tracking
+        this.activeUri = uri;
+
+        // Push to pinned subscribers (watching this exact URI)
         this.pushToSubscribers(uri, { type: 'update', html });
+
+        // Push to follow-mode subscribers (watching whatever is active)
+        this.pushToFollowers({ type: 'switch', uri, html });
     }
 
     /** Notify that a document was closed */
     notifyDocumentClosed(uri: string): void {
         this.documents.delete(uri);
         this.pushToSubscribers(uri, { type: 'closed' });
+
+        // If the closed doc was active, clear it
+        if (this.activeUri === uri) {
+            this.activeUri = null;
+        }
     }
 
     /** Stop the server and clean up */
@@ -180,6 +207,7 @@ export class PreviewServer {
             res.end(JSON.stringify({
                 ok: true,
                 port: this.port,
+                activeUri: this.activeUri,
                 documents: Array.from(this.documents.keys()),
             }));
             return;
@@ -187,12 +215,27 @@ export class PreviewServer {
 
         if (url.pathname === '/preview') {
             const docUri = url.searchParams.get('doc');
+
+            // Follow mode (no doc param) — show the active document
             if (!docUri) {
-                res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
-                res.end('Missing ?doc= parameter');
+                let content: string;
+                if (this.activeUri) {
+                    const doc = this.documents.get(this.activeUri);
+                    content = doc?.html ?? `<div class="closed-message">${AR_LABELS.noContent}</div>`;
+                } else {
+                    content = `<div class="closed-message">${AR_LABELS.noContent}</div>`;
+                }
+                const page = htmlShell(this.port, null, content);
+
+                res.writeHead(200, {
+                    'Content-Type': 'text/html; charset=utf-8',
+                    'Cache-Control': 'no-store',
+                });
+                res.end(page);
                 return;
             }
 
+            // Pinned mode — show a specific document
             let doc = this.documents.get(docUri);
             if (!doc) {
                 const filePath = this.uriToFilePath(docUri);
@@ -234,12 +277,35 @@ export class PreviewServer {
         return `<pre style="direction: ltr; text-align: left;">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`;
     }
 
+    /** Push to clients pinned to a specific document URI */
     private pushToSubscribers(uri: string, message: Record<string, unknown>): void {
         const payload = JSON.stringify(message);
         const deadClients: WsClient[] = [];
 
         for (const client of this.clients) {
             if (client.docUri === uri) {
+                try {
+                    if (client.ws.readyState === WebSocket.OPEN) {
+                        client.ws.send(payload);
+                    }
+                } catch {
+                    deadClients.push(client);
+                }
+            }
+        }
+
+        if (deadClients.length > 0) {
+            this.clients = this.clients.filter((c) => !deadClients.includes(c));
+        }
+    }
+
+    /** Push to follow-mode clients */
+    private pushToFollowers(message: Record<string, unknown>): void {
+        const payload = JSON.stringify(message);
+        const deadClients: WsClient[] = [];
+
+        for (const client of this.clients) {
+            if (client.docUri === FOLLOW) {
                 try {
                     if (client.ws.readyState === WebSocket.OPEN) {
                         client.ws.send(payload);

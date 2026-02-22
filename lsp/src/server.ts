@@ -80,12 +80,14 @@ connection.onInitialize((params: InitializeParams) => {
     };
 });
 
-// Custom request: get preview URL for a document
-connection.onRequest('almadar/previewUrl', (params: { uri: string }) => {
+// Custom request: get preview URL for a document (pinned) or follow mode
+connection.onRequest('almadar/previewUrl', (params: { uri?: string }) => {
     const port = previewServer.getPort();
     if (!port) return { url: null };
+    // With uri: pinned to that document. Without: follow mode (auto-follows active file)
+    const docParam = params.uri ? `?doc=${encodeURIComponent(params.uri)}` : '';
     return {
-        url: `http://localhost:${port}/preview?doc=${encodeURIComponent(params.uri)}`,
+        url: `http://localhost:${port}/preview${docParam}`,
     };
 });
 
@@ -296,6 +298,14 @@ function makeDiagnostic(
 // Document Events
 // ============================================================================
 
+// When a document is first opened, push it to the preview immediately
+documents.onDidOpen((event) => {
+    const uri = event.document.uri;
+    if (isPreviewable(uri)) {
+        previewServer.notifyDocumentChanged(uri, event.document.getText());
+    }
+});
+
 documents.onDidChangeContent((change) => {
     const uri = change.document.uri;
 
@@ -314,6 +324,14 @@ documents.onDidChangeContent((change) => {
             previewServer.notifyDocumentChanged(uri, change.document.getText());
         }
     }, DEBOUNCE_MS));
+});
+
+// When a document is saved, push update immediately (no debounce)
+documents.onDidSave((event) => {
+    const uri = event.document.uri;
+    if (isPreviewable(uri)) {
+        previewServer.notifyDocumentChanged(uri, event.document.getText());
+    }
 });
 
 documents.onDidClose((event) => {
