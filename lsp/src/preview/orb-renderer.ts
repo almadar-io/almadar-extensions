@@ -7,6 +7,7 @@
  */
 
 import { isArabicSchema, getSchemaValue, AR_LABELS } from './arabic-keys.js';
+import { renderJazariDiagram } from './jazari-renderer.js';
 
 // ---------------------------------------------------------------------------
 // Types (loose — we parse arbitrary JSON)
@@ -248,6 +249,12 @@ export function renderOrb(text: string): string {
     }
     if (schemaDesc) {
         parts.push(`<p class="schema-desc">${esc(schemaDesc)}</p>`);
+    }
+
+    // Al-Jazari state machine diagram (inserted above text rendering)
+    const jazariSvg = renderJazariDiagram(text);
+    if (jazariSvg) {
+        parts.push(jazariSvg);
     }
 
     // Orbitals

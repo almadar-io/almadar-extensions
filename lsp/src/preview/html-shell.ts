@@ -308,6 +308,17 @@ body {
 .error-block h2 { color: var(--crimson); margin-bottom: 0.5rem; }
 .error-block pre { font-family: monospace; font-size: 0.9rem; color: #fca5a5; white-space: pre-wrap; direction: ltr; text-align: left; }
 
+/* Jazari state machine diagram */
+.jazari-diagram {
+  margin: 1.5rem auto;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.jazari-diagram svg { cursor: default; }
+.jazari-diagram .jazari-gear:hover path,
+.jazari-diagram .jazari-gear:hover circle { fill-opacity: 0.4; }
+.jazari-diagram .jazari-arm:hover path { stroke-opacity: 1; stroke-width: 2; }
+
 /* Document closed message */
 .closed-message {
   text-align: center;
