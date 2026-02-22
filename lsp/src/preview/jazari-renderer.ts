@@ -143,11 +143,26 @@ function renderGearSvg(gear: JazariGearLayout): string {
 function renderArmSvg(arm: JazariArmLayout): string {
   if (!arm.path) return '';
 
+  // Build tooltip
+  const tipLines = [`${esc(arm.from)} → ${esc(arm.to)}`, `Event: ${esc(arm.event)}`];
+  if (arm.guard) {
+    tipLines.push(`Guard: ${arm.guard.isAI ? 'AI (call-service)' : 'deterministic'}`);
+  }
+  if (arm.effect) {
+    tipLines.push('Effects:');
+    for (const name of arm.effect.names) {
+      tipLines.push(`  ${esc(name)}`);
+    }
+  }
+
+  const tipText = tipLines.join('\n');
+
   const parts: string[] = [
     `<g class="jazari-arm">`,
     `  <path d="${arm.path}" fill="none" stroke="${JAZARI_COLORS.brass}" stroke-width="1.5" stroke-opacity="0.7" marker-end="url(#jazari-arrow)"/>`,
-    // Event label
-    `  <rect x="${arm.labelX - 30}" y="${arm.labelY - 10}" width="60" height="18" rx="4" fill="${JAZARI_COLORS.lapis}" fill-opacity="0.15" stroke="${JAZARI_COLORS.lapis}" stroke-width="0.5" stroke-opacity="0.4"/>`,
+    `  <path d="${arm.path}" fill="none" stroke="transparent" stroke-width="14" style="cursor:pointer"><title>${tipText}</title></path>`,
+    // Event label — opaque background so line doesn't obscure text
+    `  <rect x="${arm.labelX - 30}" y="${arm.labelY - 10}" width="60" height="18" rx="4" fill="${JAZARI_COLORS.darkBg}" stroke="${JAZARI_COLORS.lapis}" stroke-width="0.5" stroke-opacity="0.4" style="cursor:pointer"><title>${tipText}</title></rect>`,
     `  <text x="${arm.labelX}" y="${arm.labelY}" text-anchor="middle" dominant-baseline="central" fill="${JAZARI_COLORS.lapis}" font-size="8" font-weight="600" font-family="monospace">${esc(arm.event.length > 12 ? arm.event.slice(0, 11) + '…' : arm.event)}</text>`,
   ];
 
