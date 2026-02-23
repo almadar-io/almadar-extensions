@@ -40,7 +40,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/almadar-io/almadar-extensions.git"
+    "url": "https://github.com/almadar-io/almadar.git",
+    "directory": "docs/packages/extensions"
   },
   "license": "MIT",
   "keywords": [
@@ -50,5 +51,6 @@
     "extensions",
     "vscode",
     "zed"
-  ]
+  ],
+  "homepage": "https://github.com/almadar-io/almadar#readme"
 }
