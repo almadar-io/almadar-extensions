@@ -1,6 +1,6 @@
 {
   "name": "@almadar/extensions",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Editor extension utilities for .orb files \u2014 virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,8 +27,7 @@
     "build:zed": "mkdir -p editors/zed/syntaxes && cp dist/sexpr.injection.json editors/zed/syntaxes/sexpr.injection.json",
     "build:lsp": "cd lsp && npm install --ignore-scripts 2>/dev/null; npx tsup",
     "typecheck": "tsc --noEmit",
-    "generate-grammar": "tsx scripts/build-grammars.ts",
-    "prepublishOnly": "pnpm run build"
+    "generate-grammar": "tsx scripts/build-grammars.ts"
   },
   "dependencies": {
     "@almadar/core": ">=2.0.0",
@@ -36,7 +35,8 @@
   },
   "devDependencies": {
     "tsup": "^8.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "@types/node": "^22.0.0"
   },
   "repository": {
     "type": "git",
