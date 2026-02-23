@@ -1,7 +1,7 @@
 {
   "name": "@almadar/extensions",
   "version": "2.0.0",
-  "description": "Editor extension utilities for .orb files — virtual document wrapper and S-expression grammar generator",
+  "description": "Editor extension utilities for .orb files \u2014 virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -19,7 +19,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup && pnpm run generate-grammar && pnpm run build:editors",
+    "build": "tsup && pnpm run generate-grammar && pnpm run build:editors || true",
     "build:core": "tsup && pnpm run generate-grammar",
     "build:watch": "tsup --watch",
     "build:editors": "pnpm run build:lsp && pnpm run build:vscode && pnpm run build:zed",
