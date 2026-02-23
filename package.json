@@ -1,6 +1,6 @@
 {
   "name": "@almadar/extensions",
-  "version": "1.0.15",
+  "version": "2.0.0",
   "description": "Editor extension utilities for .orb files — virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,8 +31,8 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
-    "@almadar/core": "workspace:*",
-    "@almadar/operators": "workspace:*"
+    "@almadar/core": ">=2.0.0",
+    "@almadar/operators": ">=2.0.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
@@ -40,8 +40,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/almadar-io/almadar.git",
-    "directory": "packages/almadar-extensions"
+    "url": "https://github.com/almadar-io/almadar-extensions.git"
   },
   "license": "MIT",
   "keywords": [
