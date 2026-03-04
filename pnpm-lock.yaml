@@ -9,33 +9,32 @@ importers:
   .:
     dependencies:
       '@almadar/core':
-        specifier: '>=2.0.0'
-        version: 2.0.0
+        specifier: ^2.1.3
+        version: 2.1.3
       '@almadar/operators':
-        specifier: '>=2.0.0'
-        version: 2.0.1
+        specifier: ^2.0.2
+        version: 2.0.2
     devDependencies:
       '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.11
+        specifier: ^22.19.13
+        version: 22.19.13
       tsup:
-        specifier: ^8.0.0
+        specifier: ^8.5.1
         version: 8.5.1(typescript@5.9.3)
       typescript:
-        specifier: ^5.4.0
+        specifier: ^5.9.3
         version: 5.9.3
 
 packages:
 
-  '@almadar/core@2.0.0':
-    resolution: {integrity: sha512-BUaWjrjtakENbvAq0tpL77yeEid7hPWjlgmNRkNNIJb673avMtnXoJSzjwWd7bNARhhH9zdbwDbaLz5QbsK3jQ==}
+  '@almadar/core@2.1.3':
+    resolution: {integrity: sha512-q2mgKhuUisemoS4DjXOZdql6+Pq529Pfm4+U+edqdRttZPOQT1xKg4PwWvExeHwoFnz6O6BwBE+oHkwqi3wiOg==}
 
-  '@almadar/operators@2.0.1':
-    resolution: {integrity: sha512-OsQmatgCPBKEUjCvS6RmuIYmyY5O/7tvwv4qW/SSwu3KP0R8f18y+QNeXyNHxYvss+96T6id0r8hUhw+kSojNg==}
-    deprecated: Test version, use 2.0.0
+  '@almadar/operators@2.0.2':
+    resolution: {integrity: sha512-xclxb8LvDtJhVjNrE2wW1i5kwFaYIzh3KMhnd084CZHwvfpJjWhj5YD+dLBLM9T8pcbbykDd2gS/RJoEiHZIRA==}
 
-  '@almadar/patterns@2.0.0':
-    resolution: {integrity: sha512-DDAkm2nMe/hpzpWeAsN7MbIPfQkiG4b78h+K334G3S4CeBh5YlcWi6nMyL1eKWVlYX7V/YbE4qyUzE5M/9oaww==}
+  '@almadar/patterns@2.0.1':
+    resolution: {integrity: sha512-GSbcPv6bZZtou9OGBzFCuE+4w32H5/qbkL+A5XbHU7VMvCx6WDIES3Ls7l+Y0POB0WDNlL00bIrBrDyUd27kow==}
 
   '@esbuild/aix-ppc64@0.27.3':
     resolution: {integrity: sha512-9fJMTNFTWZMh5qwrBItuziu834eOCUcEqymSH7pY+zoMVEZg3gcPuBNxH1EvfVYe9h0x/Ptw8KBzv7qxb7l8dg==}
@@ -334,8 +333,8 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
-  '@types/node@22.19.11':
-    resolution: {integrity: sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w==}
+  '@types/node@22.19.13':
+    resolution: {integrity: sha512-akNQMv0wW5uyRpD2v2IEyRSZiR+BeGuoB6L310EgGObO44HSMNT8z1xzio28V8qOrgYaopIDNA18YgdXd+qTiw==}
 
   acorn@8.16.0:
     resolution: {integrity: sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw==}
@@ -545,15 +544,15 @@ packages:
 
 snapshots:
 
-  '@almadar/core@2.0.0':
+  '@almadar/core@2.1.3':
     dependencies:
-      '@almadar/operators': 2.0.1
-      '@almadar/patterns': 2.0.0
+      '@almadar/operators': 2.0.2
+      '@almadar/patterns': 2.0.1
       zod: 3.25.76
 
-  '@almadar/operators@2.0.1': {}
+  '@almadar/operators@2.0.2': {}
 
-  '@almadar/patterns@2.0.0': {}
+  '@almadar/patterns@2.0.1': {}
 
   '@esbuild/aix-ppc64@0.27.3':
     optional: true
@@ -724,7 +723,7 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
-  '@types/node@22.19.11':
+  '@types/node@22.19.13':
     dependencies:
       undici-types: 6.21.0
 

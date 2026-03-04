@@ -27,7 +27,8 @@
     "build:zed": "mkdir -p editors/zed/syntaxes && cp dist/sexpr.injection.json editors/zed/syntaxes/sexpr.injection.json",
     "build:lsp": "cd lsp && npm install --ignore-scripts 2>/dev/null; npx tsup",
     "typecheck": "tsc --noEmit",
-    "generate-grammar": "tsx scripts/build-grammars.ts"
+    "generate-grammar": "tsx scripts/build-grammars.ts",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@almadar/core": ">=2.0.0",
