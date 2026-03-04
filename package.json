@@ -37,7 +37,10 @@
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "eslint": "10.0.0",
+    "@typescript-eslint/parser": "8.56.0",
+    "@almadar/eslint-plugin": ">=2.3.0"
   },
   "repository": {
     "type": "git",
