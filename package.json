@@ -1,6 +1,6 @@
 {
   "name": "@almadar/extensions",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Editor extension utilities for .orb files \u2014 virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
