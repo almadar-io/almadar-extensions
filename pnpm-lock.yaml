@@ -10,14 +10,14 @@ importers:
     dependencies:
       '@almadar/core':
         specifier: '>=2.0.0'
-        version: 2.5.1
+        version: 2.5.2
       '@almadar/operators':
         specifier: '>=2.0.0'
-        version: 2.0.5
+        version: 2.0.6
     devDependencies:
       '@almadar/eslint-plugin':
         specifier: '>=2.3.0'
-        version: 2.4.4(eslint@10.0.0)
+        version: 2.4.5(eslint@10.0.0)
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.15
@@ -36,19 +36,19 @@ importers:
 
 packages:
 
-  '@almadar/core@2.5.1':
-    resolution: {integrity: sha512-fRs/9bPDa0zGXXx8hWWZhW7eItSqAWaMHgNqvMxVFEme7VnaVqAPB4Yz4b2v1VgHWbcb2/xFfmCPj5LT/NWScg==}
+  '@almadar/core@2.5.2':
+    resolution: {integrity: sha512-f8aBLARQhDn+rtr+RNTJ/k6PF0Ng7No7nc5AK253J3CT35JlyCDuQw353ZztHcn8x25aDCgMklkU6d0+LGioJA==}
 
-  '@almadar/eslint-plugin@2.4.4':
-    resolution: {integrity: sha512-xMl+1A7cEKiUDiiJ8aJnfhAxDAPlwmdgsSMJCvNcZzZ4kENdmuG7AuZLhv6Vxd6rZeMuz9qdxswwzqFgBK508A==}
+  '@almadar/eslint-plugin@2.4.5':
+    resolution: {integrity: sha512-MXLZdQifHg8BLF8//S4C/Zg/pwg/2lzimGSepIheDbCaeRK7lsBk7oKk+/o5oc4c7WvIOcAbu1JjJM7FJxboAg==}
     peerDependencies:
       eslint: '>=8.0.0'
 
-  '@almadar/operators@2.0.5':
-    resolution: {integrity: sha512-bPobR/9IuMMG+Rnc60aVYB8T5+biLNRf2cYNJhDYLMvxUY7gvs9QZlCpUKAYmAZe2n2+/2cJwaOnZ78jDGug1w==}
+  '@almadar/operators@2.0.6':
+    resolution: {integrity: sha512-ASnB/+eIJznOdTdwllsLfSAJRAF9Mk90TsgBfYCDaq71vf9LiLEItOIxsOzNU59m9ssCruVvVlQ14A7py03hCQ==}
 
-  '@almadar/patterns@2.7.2':
-    resolution: {integrity: sha512-r/hznWTfKkUjmnEC3b5j1Tn+z9ZHrAM8pgLnlSlEiHsPD1kE6klRZT4qiB8OkGKQvUawYLKnFLFgVdyYGxfNww==}
+  '@almadar/patterns@2.7.3':
+    resolution: {integrity: sha512-H8CTjsA0V9JlPpw1v+K43qnYr1/sg4+3HA+VodNfScaMgbOQT6U4cBnhGUF/JFKyNIur8/RvDNJuoSrlAJd2aw==}
 
   '@esbuild/aix-ppc64@0.27.4':
     resolution: {integrity: sha512-cQPwL2mp2nSmHHJlCyoXgHGhbEPMrEEU5xhkcy3Hs/O7nGZqEpZ2sUtLaL9MORLtDfRvVl2/3PAuEkYZH0Ty8Q==}
@@ -884,20 +884,20 @@ packages:
 
 snapshots:
 
-  '@almadar/core@2.5.1':
+  '@almadar/core@2.5.2':
     dependencies:
-      '@almadar/operators': 2.0.5
-      '@almadar/patterns': 2.7.2
+      '@almadar/operators': 2.0.6
+      '@almadar/patterns': 2.7.3
       zod: 3.25.76
 
-  '@almadar/eslint-plugin@2.4.4(eslint@10.0.0)':
+  '@almadar/eslint-plugin@2.4.5(eslint@10.0.0)':
     dependencies:
       eslint: 10.0.0
       jsonc-eslint-parser: 3.1.0
 
-  '@almadar/operators@2.0.5': {}
+  '@almadar/operators@2.0.6': {}
 
-  '@almadar/patterns@2.7.2': {}
+  '@almadar/patterns@2.7.3': {}
 
   '@esbuild/aix-ppc64@0.27.4':
     optional: true
