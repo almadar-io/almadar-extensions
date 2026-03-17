@@ -32,8 +32,8 @@
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
-    "@almadar/core": ">=2.6.0",
-    "@almadar/operators": ">=2.1.0"
+    "@almadar/core": ">=2.0.0",
+    "@almadar/operators": ">=2.0.0"
   },
   "devDependencies": {
     "tsup": "^8.0.0",
@@ -45,7 +45,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/almadar-io/almadar.git",
+    "url": "https://github.com/almadar-io/almadar-extensions.git",
     "directory": "docs/packages/extensions"
   },
   "license": "MIT",
