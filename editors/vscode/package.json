@@ -1,9 +1,17 @@
 {
-    "name": "almadar-orb",
-    "displayName": "Almadar Orbital Language",
-    "description": "Language support for .orb files — validation via orb-lsp and S-expression highlighting",
-    "version": "1.0.0",
+    "name": "orb",
+    "displayName": "Orb",
+    "description": "Language support for .orb files — syntax highlighting, validation, and S-expression support for the Orb programming language",
+    "version": "1.1.0",
     "publisher": "almadar",
+    "icon": "icon.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/almadar-io/orb.git",
+        "directory": "extensions/vscode"
+    },
+    "homepage": "https://orb.almadar.io",
+    "keywords": ["orb", "orbital", "state-machine", "compiler", "full-stack"],
     "main": "./dist/extension.js",
     "activationEvents": [
         "onLanguage:orb"

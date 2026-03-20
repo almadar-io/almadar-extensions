@@ -1,11 +1,11 @@
-id = "almadar-orb"
-name = "Almadar Orbital"
-version = "1.0.0"
-description = "Language support for .orb files — TypeScript-powered validation with S-expression highlighting"
-authors = ["Almadar Team"]
-repository = "https://github.com/almadar-io/almadar"
+id = "orb"
+name = "Orb"
+version = "1.1.0"
+description = "Language support for .orb files — syntax highlighting, validation, and S-expression support for the Orb programming language"
+authors = ["Almadar <hello@almadar.io>"]
+repository = "https://github.com/almadar-io/zed-orbital"
 schema_version = 1
 
 [language_servers.orb-lsp]
-name = "Orbital LSP"
-languages = ["Orbital"]
+name = "Orb LSP"
+languages = ["Orb"]
