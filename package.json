@@ -48,7 +48,7 @@
     "url": "https://github.com/almadar-io/almadar-extensions.git",
     "directory": "docs/packages/extensions"
   },
-  "license": "MIT",
+  "license": "BSL-1.1",
   "keywords": [
     "almadar",
     "orbital",
