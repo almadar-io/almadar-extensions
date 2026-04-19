@@ -3,7 +3,7 @@
  * Build Grammars Script
  *
  * Generates the TextMate S-expression injection grammar from
- * the @almadar/operators registry. Run via:
+ * the @almadar/std registry. Run via:
  *
  *   pnpm run generate-grammar
  *

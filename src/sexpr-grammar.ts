@@ -3,7 +3,7 @@
  *
  * Generates a TextMate injection grammar for S-expression syntax
  * highlighting inside .orb files. The grammar is derived from
- * @almadar/operators — the single source of truth for all operator names.
+ * @almadar/std — the single source of truth for all operator names.
  *
  * This means new operators automatically get highlighting when
  * the package is rebuilt. No manual grammar maintenance.
@@ -16,7 +16,7 @@ import {
     OPERATORS,
     type OperatorMeta,
     type OperatorCategory,
-} from '@almadar/operators';
+} from '@almadar/std';
 
 // ============================================================================
 // Types
@@ -169,7 +169,7 @@ export function generateSExprGrammarJson(): string {
 /**
  * Get a flat list of all operator names from the registry.
  * Useful for editor extensions that need the operator list without
- * importing @almadar/operators directly.
+ * importing @almadar/std directly.
  */
 export function getOperatorNames(): string[] {
     return [...OPERATOR_NAMES];
