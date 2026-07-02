@@ -1,0 +1,13 @@
+{
+  "name": "tree-sitter-lolo",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for Almadar's .lolo orbital authoring language",
+  "main": "bindings/node",
+  "tree-sitter": [
+    {
+      "scope": "source.lolo",
+      "file-types": ["lolo"]
+    }
+  ],
+  "license": "BSL-1.1"
+}

@@ -4,7 +4,7 @@
   "patterns": [
     {
       "name": "keyword.operator.arithmetic.sexpr",
-      "match": "(?<=\")(floor|round|clamp|ceil|abs|min|max|\\+|-|\\*|/|%)(?=\")"
+      "match": "(?<=\")(\\+|-|\\*|/|%)(?=\")"
     },
     {
       "name": "keyword.operator.comparison.sexpr",
@@ -16,47 +16,99 @@
     },
     {
       "name": "keyword.control.sexpr",
-      "match": "(?<=\")(when|let|do|fn)(?=\")"
+      "match": "(?<=\")(list|when|let|do|fn)(?=\")"
     },
     {
       "name": "keyword.other.effect.sexpr",
-      "match": "(?<=\")(call-service|render-ui|navigate|persist|despawn|notify|spawn|emit|set)(?=\")"
-    },
-    {
-      "name": "support.function.collection.sexpr",
-      "match": "(?<=\")(includes|contains|average|filter|concat|count|first|empty|find|last|map|sum|nth)(?=\")"
+      "match": "(?<=\")(fetch-stream|call-service|send-server|render-ui|navigate|persist|despawn|notify|spawn|fetch|emit|set|log|ref)(?=\")"
     },
     {
       "name": "support.function.math.sexpr",
-      "match": "(?<=\")(math/randomInt|math/default|math/random|math/clamp|math/floor|math/round|math/ceil|math/sqrt|math/sign|math/lerp|math/abs|math/min|math/max|math/pow|math/mod|math/map)(?=\")"
+      "match": "(?<=\")(math/randomInt|math/approach|math/default|math/deg-rad|math/rad-deg|math/random|math/clamp|math/floor|math/round|math/atan2|math/hypot|math/ceil|math/sqrt|math/sign|math/lerp|math/asin|math/acos|math/atan|math/wrap|math/abs|math/min|math/max|math/pow|math/mod|math/map|math/sin|math/cos|math/tan)(?=\")"
     },
     {
       "name": "support.function.string.sexpr",
-      "match": "(?<=\")(str/startsWith|str/replaceAll|str/capitalize|str/includes|str/endsWith|str/template|str/truncate|str/replace|str/reverse|str/default|str/concat|str/repeat|str/upper|str/lower|str/slice|str/split|str/trim|str/join|str/len)(?=\")"
+      "match": "(?<=\")(str/replaceAll|str/startsWith|str/capitalize|str/trimStart|str/titleCase|str/camelCase|str/kebabCase|str/snakeCase|str/includes|str/endsWith|str/padStart|str/template|str/truncate|str/trimEnd|str/replace|str/reverse|str/default|str/concat|str/padEnd|str/repeat|str/upper|str/lower|str/split|str/slice|str/trim|str/join|str/len)(?=\")"
     },
     {
       "name": "support.function.array.sexpr",
-      "match": "(?<=\")(array/partition|array/findIndex|array/includes|array/dropLast|array/takeLast|array/reverse|array/flatten|array/groupBy|array/prepend|array/shuffle|array/indexOf|array/filter|array/reduce|array/concat|array/unique|array/append|array/insert|array/remove|array/reject|array/repeat|array/every|array/first|array/slice|array/range|array/find|array/some|array/last|array/sort|array/take|array/drop|array/len|array/map|array/nth|array/sum|array/avg|array/min|array/max|array/zip)(?=\")"
+      "match": "(?<=\")(array/removeItem|array/findIndex|array/partition|array/includes|array/takeLast|array/dropLast|array/prepend|array/reverse|array/shuffle|array/flatten|array/indexOf|array/groupBy|array/empty\\?|array/concat|array/append|array/insert|array/remove|array/unique|array/filter|array/reject|array/reduce|array/range|array/first|array/slice|array/every|array/count|array/last|array/sort|array/find|array/some|array/take|array/drop|array/len|array/nth|array/zip|array/map|array/sum|array/avg|array/min|array/max)(?=\")"
     },
     {
       "name": "support.function.object.sexpr",
-      "match": "(?<=\")(object/entries|object/values|object/equals|object/filter|object/merge|object/clone|object/keys|object/pick|object/omit|object/get|object/set|object/has)(?=\")"
+      "match": "(?<=\")(object/fromEntries|object/deepMerge|object/mapValues|object/deepClone|object/entries|object/mapKeys|object/values|object/filter|object/empty\\?|object/equals|object/merge|object/clone|object/keys|object/pick|object/omit|object/get|object/set|object/has|path)(?=\")"
     },
     {
       "name": "support.function.time.sexpr",
-      "match": "(?<=\")(time/subtract|time/isBefore|time/isFuture|time/isAfter|time/weekday|time/format|time/isPast|time/minute|time/today|time/parse|time/month|time/diff|time/year|time/hour|time/now|time/add|time/day)(?=\")"
+      "match": "(?<=\")(time/isBetween|time/subtract|time/isBefore|time/isFuture|time/relative|time/duration|time/weekday|time/startOf|time/isAfter|time/isToday|time/format|time/minute|time/second|time/isSame|time/isPast|time/today|time/parse|time/month|time/endOf|time/year|time/hour|time/diff|time/now|time/day|time/add)(?=\")"
     },
     {
       "name": "support.function.validate.sexpr",
-      "match": "(?<=\")(validate/minLength|validate/maxLength|validate/required|validate/pattern|validate/length|validate/equals|validate/email|validate/phone|validate/range|validate/oneOf|validate/check|validate/uuid|validate/url|validate/min|validate/max)(?=\")"
+      "match": "(?<=\")(validate/creditCard|validate/minLength|validate/maxLength|validate/required|validate/boolean|validate/pattern|validate/string|validate/number|validate/object|validate/length|validate/noneOf|validate/equals|validate/array|validate/email|validate/phone|validate/range|validate/oneOf|validate/check|validate/uuid|validate/date|validate/url|validate/min|validate/max)(?=\")"
     },
     {
       "name": "support.function.format.sexpr",
-      "match": "(?<=\")(format/currency|format/percent|format/ordinal|format/number|format/plural|format/bytes|format/phone|format/list)(?=\")"
+      "match": "(?<=\")(format/creditCard|format/currency|format/percent|format/ordinal|format/number|format/plural|format/bytes|format/phone|format/list)(?=\")"
     },
     {
       "name": "support.function.async.sexpr",
-      "match": "(?<=\")(async/debounce|async/throttle|async/sequence|async/timeout|async/delay|async/retry|async/race|async/all)(?=\")"
+      "match": "(?<=\")(async/interval|async/debounce|async/throttle|async/sequence|async/timeout|async/delay|async/retry|async/race|async/all)(?=\")"
+    },
+    {
+      "name": "support.function.ml-arch.sexpr",
+      "match": "(?<=\")(nn/sequential|nn/getWeights|nn/setWeights|nn/paramCount|nn/batchnorm|nn/layernorm|nn/sigmoid|nn/softmax|nn/dropout|nn/linear|nn/clone|nn/relu|nn/tanh)(?=\")"
+    },
+    {
+      "name": "support.function.ml-effect.sexpr",
+      "match": "(?<=\")(train/checkForbiddenOutputs|train/getMaxWeightMagnitude|train/checkWeightMagnitude|train/computeAdvantages|train/checkConstraints|train/checkRegression|train/getGradientNorm|train/computeReturns|train/clipGradients|train/crossEntropy|train/clipWeights|train/sampleBatch|train/validate|train/huber|nn/forward|train/loop|train/step|train/adam|train/mse|train/sgd)(?=\")"
+    },
+    {
+      "name": "support.function.ml-tensor.sexpr",
+      "match": "(?<=\")(tensor/outOfRangeIndices|tensor/outOfRangeDims|tensor/clampPerDim|tensor/allInRange|tensor/reshape|tensor/flatten|tensor/toArray|tensor/matmul|tensor/argmax|tensor/toList|tensor/zeros|tensor/randn|tensor/shape|tensor/slice|tensor/clamp|tensor/from|tensor/ones|tensor/rand|tensor/mean|tensor/norm|tensor/get|tensor/add|tensor/sub|tensor/mul|tensor/div|tensor/dot|tensor/sum|tensor/max|tensor/min)(?=\")"
+    },
+    {
+      "name": "support.function.prob.sexpr",
+      "match": "(?<=\")(prob/credible-interval|prob/expected-value|prob/categorical|prob/percentile|prob/condition|prob/posterior|prob/histogram|prob/gaussian|prob/variance|prob/uniform|prob/poisson|prob/sample|prob/infer|prob/seed|prob/flip|prob/beta)(?=\")"
+    },
+    {
+      "name": "support.function.os.sexpr",
+      "match": "(?<=\")(os/watch-process|os/watch-signal|os/watch-files|os/watch-port|os/watch-http|os/watch-cron|os/watch-env|os/debounce)(?=\")"
+    },
+    {
+      "name": "support.function.agent.sexpr",
+      "match": "(?<=\")(agent/memory-strength|agent/switch-provider|agent/context-usage|agent/token-count|agent/search-code|agent/session-id|agent/is-pinned|agent/reinforce|agent/memories|agent/provider|agent/memorize|agent/generate|agent/compact|agent/recall|agent/forget|agent/invoke|agent/model|agent/tools|agent/decay|agent/label|agent/fork|agent/pin)(?=\")"
+    },
+    {
+      "name": "support.function.composition.sexpr",
+      "match": "(?<=\")(behavior/detect-layout|behavior/compose|behavior/wire|behavior/pipe)(?=\")"
+    },
+    {
+      "name": "support.function.vec.sexpr",
+      "match": "(?<=\")(vec/clamp-length|vec/distance-sq|vec/length-sq|vec/normalize|vec/distance|vec/length|vec/rotate|vec/scale|vec/cross|vec/angle|vec/lerp|vec/add|vec/sub|vec/dot)(?=\")"
+    },
+    {
+      "name": "support.function.geo.sexpr",
+      "match": "(?<=\")(geo/rect-circle-overlap|geo/segment-intersect|geo/point-in-circle|geo/circle-overlap|geo/point-in-rect|geo/aabb-overlap|geo/reflect)(?=\")"
+    },
+    {
+      "name": "support.function.grid.sexpr",
+      "match": "(?<=\")(grid/manhattan-distance|grid/cells-in-radius|grid/iso-to-screen|grid/screen-to-iso|grid/from-world|grid/neighbors|grid/in-bounds|grid/to-world|grid/distance|grid/line)(?=\")"
+    },
+    {
+      "name": "support.function.anim.sexpr",
+      "match": "(?<=\")(anim/direction-from-delta|anim/sheet-rect|anim/frame-at)(?=\")"
+    },
+    {
+      "name": "support.function.ease.sexpr",
+      "match": "(?<=\")(ease/smoothstep|ease/apply)(?=\")"
+    },
+    {
+      "name": "support.function.noise.sexpr",
+      "match": "(?<=\")(noise/simplex|noise/perlin|noise/fbm)(?=\")"
+    },
+    {
+      "name": "support.function.path.sexpr",
+      "match": "(?<=\")(path/reachable|path/astar)(?=\")"
     },
     {
       "name": "variable.other.binding.sexpr",

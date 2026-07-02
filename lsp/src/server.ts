@@ -1,13 +1,14 @@
 /**
  * Almadar OrbLSP Server
  *
- * A stdio-based LSP server that validates .orb files by shelling out
- * to `almadar validate --json` and mapping diagnostics back to the
- * original .orb file positions.
+ * A stdio-based LSP server that validates .orb and .lolo files by shelling
+ * out to `orb validate --json` (the @almadar/orb CLI) and mapping
+ * diagnostics back to the original file positions.
  *
  * Architecture:
- *   .orb file → temp file → `almadar validate --json` → parse JSON
- *   → map JSON paths to line positions → publish diagnostics
+ *   .orb/.lolo file → temp file → `orb validate --json` → parse JSON
+ *   → map JSON paths (or lolo <input>:L:C locators) to line positions
+ *   → publish diagnostics
  */
 
 import {
@@ -124,18 +125,23 @@ interface ValidateResult {
 // Binary Resolution
 // ============================================================================
 
-const BINARY_NAME = process.platform === 'win32' ? 'almadar.exe' : 'almadar';
+// The published, actively-maintained CLI is @almadar/orb (bin: "orb") — NOT
+// @almadar/cli (bin: "almadar"), which is a stale, unmaintained package that
+// predates .lolo support. Confirmed live: @almadar/orb correctly returns
+// LOLO_PARSE_ERROR with a real <input>:LINE:COL locator; @almadar/cli just
+// tries JSON.parse on .lolo source and reports a generic JSON_PARSE_ERROR.
+const BINARY_NAME = process.platform === 'win32' ? 'orb.exe' : 'orb';
 const PLATFORM_PACKAGE: Record<string, string> = {
-    'darwin-x64': '@almadar/cli-darwin-x64',
-    'darwin-arm64': '@almadar/cli-darwin-arm64',
-    'linux-x64': '@almadar/cli-linux-x64',
-    'linux-arm64': '@almadar/cli-linux-arm64',
-    'win32-x64': '@almadar/cli-windows-x64',
+    'darwin-x64': '@almadar/orb-darwin-x64',
+    'darwin-arm64': '@almadar/orb-darwin-arm64',
+    'linux-x64': '@almadar/orb-linux-x64',
+    'linux-arm64': '@almadar/orb-linux-arm64',
+    'win32-x64': '@almadar/orb-windows-x64',
 };
 
 let _cachedBinaryPath: string | null | undefined;
 
-function resolveAlmadarBinary(): string | null {
+function resolveOrbBinary(): string | null {
     if (_cachedBinaryPath !== undefined) return _cachedBinaryPath;
 
     const packageName = PLATFORM_PACKAGE[`${process.platform}-${process.arch}`];
@@ -171,11 +177,11 @@ function resolveAlmadarBinary(): string | null {
         }
     }
 
-    // Strategy 3: Check if 'almadar' is on PATH
+    // Strategy 3: Check if 'orb' is on PATH
     try {
-        execFileSync('almadar', ['--version'], { timeout: 5000, stdio: 'ignore' });
-        _cachedBinaryPath = 'almadar';
-        return 'almadar';
+        execFileSync('orb', ['--version'], { timeout: 5000, stdio: 'ignore' });
+        _cachedBinaryPath = 'orb';
+        return 'orb';
     } catch { /* not on PATH */ }
 
     _cachedBinaryPath = null;
@@ -184,7 +190,7 @@ function resolveAlmadarBinary(): string | null {
 
 function runValidate(filePath: string): Promise<ValidateResult> {
     return new Promise((resolve) => {
-        const binaryPath = resolveAlmadarBinary();
+        const binaryPath = resolveOrbBinary();
 
         if (!binaryPath) {
             resolve({
@@ -193,7 +199,7 @@ function runValidate(filePath: string): Promise<ValidateResult> {
                 errors: [{
                     code: 'CLI_NOT_FOUND',
                     path: '',
-                    message: 'Almadar CLI binary not found. Install with: npm install -g @almadar/cli',
+                    message: 'Orb CLI binary not found. Install with: npm install -g @almadar/orb',
                 }],
             });
             return;
@@ -209,7 +215,7 @@ function runValidate(filePath: string): Promise<ValidateResult> {
                 resolve(result);
             } catch {
                 connection.console.error(
-                    `OrbLSP: almadar validate failed: ${error?.message ?? stderr}`
+                    `OrbLSP: orb validate failed: ${error?.message ?? stderr}`
                 );
                 resolve({
                     success: false,
@@ -229,19 +235,26 @@ function runValidate(filePath: string): Promise<ValidateResult> {
 // Document Validation
 // ============================================================================
 
-async function validateOrbDocument(document: TextDocument): Promise<void> {
-    const orbContent = document.getText();
-    if (!orbContent.trim()) {
+/** '.orb' or '.lolo' — determines the temp file extension so the CLI parses
+ *  the content with the right grammar (it auto-detects lolo vs orb by suffix). */
+function sourceExtension(uri: string): '.orb' | '.lolo' {
+    return uri.toLowerCase().endsWith('.lolo') ? '.lolo' : '.orb';
+}
+
+async function validateDocument(document: TextDocument): Promise<void> {
+    const sourceContent = document.getText();
+    if (!sourceContent.trim()) {
         connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
         return;
     }
 
     // Write content to a temp file (the CLI requires a file path)
     const tmpDir = os.tmpdir();
-    const tmpFile = path.join(tmpDir, `orb-lsp-${process.pid}-${Date.now()}.orb`);
+    const ext = sourceExtension(document.uri);
+    const tmpFile = path.join(tmpDir, `orb-lsp-${process.pid}-${Date.now()}${ext}`);
 
     try {
-        fs.writeFileSync(tmpFile, orbContent, 'utf-8');
+        fs.writeFileSync(tmpFile, sourceContent, 'utf-8');
         const result = await runValidate(tmpFile);
 
         const diagnostics: Diagnostic[] = [];
@@ -250,7 +263,7 @@ async function validateOrbDocument(document: TextDocument): Promise<void> {
         if (result.errors) {
             for (const err of result.errors) {
                 diagnostics.push(makeDiagnostic(
-                    orbContent, err, DiagnosticSeverity.Error
+                    sourceContent, err, DiagnosticSeverity.Error
                 ));
             }
         }
@@ -259,7 +272,7 @@ async function validateOrbDocument(document: TextDocument): Promise<void> {
         if (result.warnings) {
             for (const warn of result.warnings) {
                 diagnostics.push(makeDiagnostic(
-                    orbContent, warn, DiagnosticSeverity.Warning
+                    sourceContent, warn, DiagnosticSeverity.Warning
                 ));
             }
         }
@@ -271,15 +284,26 @@ async function validateOrbDocument(document: TextDocument): Promise<void> {
     }
 }
 
+/** Matches a lolo-level parse error's `path` — a literal `<input>:LINE:COL`
+ *  locator into the original .lolo source, not a JSON-pointer path. */
+const LOLO_SOURCE_POS = /^<input>:(\d+):(\d+)$/;
+
 function makeDiagnostic(
-    orbContent: string,
+    sourceContent: string,
     item: { code: string; path: string; message: string; suggestion?: string },
     severity: DiagnosticSeverity,
 ): Diagnostic {
-    const pos = jsonPathToPosition(orbContent, item.path);
+    const loloMatch = LOLO_SOURCE_POS.exec(item.path);
+    // Lolo parse errors carry a real line:col into the source; everything
+    // else (post-lowering semantic errors) is a JSON-pointer path with no
+    // direct .lolo-source position — jsonPathToPosition's whole-document
+    // fallback is the best available for those until a lolo->orb source map exists.
+    const pos = loloMatch
+        ? { line: Number(loloMatch[1]) - 1, character: Number(loloMatch[2]) - 1 }
+        : jsonPathToPosition(sourceContent, item.path);
 
     // Find the end of the line for the range
-    const lines = orbContent.split('\n');
+    const lines = sourceContent.split('\n');
     const lineText = lines[pos.line] ?? '';
     const endChar = lineText.length;
 
@@ -295,7 +319,7 @@ function makeDiagnostic(
         },
         message,
         severity,
-        source: 'almadar',
+        source: 'orb',
         code: item.code,
     };
 }
@@ -313,9 +337,10 @@ documents.onDidChangeContent((change) => {
 
     debounceTimers.set(uri, setTimeout(() => {
         debounceTimers.delete(uri);
-        // Validate .orb files
-        if (uri.toLowerCase().endsWith('.orb')) {
-            validateOrbDocument(change.document);
+        // Validate .orb and .lolo files
+        const lower = uri.toLowerCase();
+        if (lower.endsWith('.orb') || lower.endsWith('.lolo')) {
+            validateDocument(change.document);
         }
         // Push preview update for all previewable files
         if (isPreviewable(uri)) {

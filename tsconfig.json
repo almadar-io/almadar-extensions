@@ -6,6 +6,8 @@
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
+        "types": ["node"],
+        "ignoreDeprecations": "6.0",
         "declaration": true,
         "outDir": "./dist",
         "rootDir": "."

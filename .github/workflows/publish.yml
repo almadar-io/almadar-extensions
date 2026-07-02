@@ -33,3 +33,22 @@ jobs:
           pnpm publish --access public --no-git-checks
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # lsp/ is a separate published package (@almadar/orb-lsp) — it uses npm
+      # (not pnpm) as its own package manager, with its own package-lock.json,
+      # so it isn't reachable via the pnpm workspace/publish above.
+      - name: Install lsp/ dependencies
+        working-directory: lsp
+        run: npm ci
+
+      - name: Build lsp/
+        working-directory: lsp
+        run: npm run build
+
+      - name: Publish lsp/ (@almadar/orb-lsp)
+        working-directory: lsp
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          npm publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

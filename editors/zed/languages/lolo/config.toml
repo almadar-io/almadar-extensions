@@ -1,0 +1,15 @@
+# Lolo Language Configuration for Zed
+name = "Lolo"
+grammar = "lolo"
+path_suffixes = ["lolo"]
+line_comments = [";;", "#"]
+block_comments = [["#=", "=#"]]
+autoclose_before = ";:.,=}])>"
+brackets = [
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = true },
+    { start = "(", end = ")", close = true, newline = false },
+    { start = "\"", end = "\"", close = true, newline = false, not_in = ["string"] },
+]
+word_characters = ["_", "-", "/"]
+tab_size = 2

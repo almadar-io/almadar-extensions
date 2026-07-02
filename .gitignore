@@ -6,6 +6,8 @@ turbo-build.log
 editors/vscode/dist/
 editors/vscode/node_modules/
 editors/vscode/syntaxes/sexpr.injection.json
+editors/vscode/syntaxes/lolo.tmLanguage.json
+editors/vscode/*.vsix
 editors/zed/syntaxes/
 editors/zed/target/
 

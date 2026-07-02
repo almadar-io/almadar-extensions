@@ -1,6 +1,6 @@
 {
   "name": "@almadar/extensions",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Editor extension utilities for .orb files — virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,7 +24,7 @@
     "build:core": "tsup && pnpm run generate-grammar",
     "build:watch": "tsup --watch",
     "build:editors": "pnpm run build:lsp && pnpm run build:vscode && pnpm run build:zed",
-    "build:vscode": "cd editors/vscode && npm install --ignore-scripts 2>/dev/null; node esbuild.js && cp ../../dist/sexpr.injection.json syntaxes/sexpr.injection.json",
+    "build:vscode": "cd editors/vscode && npm install --ignore-scripts 2>/dev/null; node esbuild.js && cp ../../dist/sexpr.injection.json syntaxes/sexpr.injection.json && cp ../../dist/lolo.tmLanguage.json syntaxes/lolo.tmLanguage.json && cp ../../lsp/dist/server.js dist/server.js",
     "build:zed": "mkdir -p editors/zed/syntaxes && cp dist/sexpr.injection.json editors/zed/syntaxes/sexpr.injection.json",
     "build:lsp": "cd lsp && npm install --ignore-scripts 2>/dev/null; npx tsup",
     "typecheck": "tsc --noEmit",
@@ -34,7 +34,7 @@
   "dependencies": {
     "@almadar/core": ">=10.13.0",
     "@almadar/std": ">=16.103.2",
-    "@almadar/syntax": ">=1.4.0"
+    "@almadar/syntax": ">=1.6.0"
   },
   "devDependencies": {
     "tsup": "^8.5.1",
@@ -46,8 +46,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/almadar-io/almadar-extensions.git",
-    "directory": "docs/packages/extensions"
+    "url": "https://github.com/almadar-io/almadar-extensions.git"
   },
   "license": "BSL-1.1",
   "keywords": [

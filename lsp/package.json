@@ -1,11 +1,15 @@
 {
     "name": "@almadar/orb-lsp",
     "version": "1.0.0",
-    "description": "Language Server Protocol for .orb files — validates via almadar CLI",
+    "description": "Language Server Protocol for .orb and .lolo files — validates via the @almadar/orb CLI",
     "type": "module",
     "main": "./dist/server.js",
     "bin": {
         "orb-lsp": "./bin/orb-lsp.js"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
     },
     "scripts": {
         "build": "tsup",
@@ -13,14 +17,14 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "@almadar/cli": "^1.9.3",
+        "@almadar/orb": "^2.47.1",
         "vscode-languageserver": "^10.1.0",
         "vscode-languageserver-textdocument": "^1.0.12",
         "ws": "^8.21.0"
     },
     "devDependencies": {
         "@almadar/core": ">=10.13.0",
-        "@almadar/ui": ">=5.93.0",
+        "@almadar/ui": ">=5.94.1",
         "@types/node": "^22.0.0",
         "@types/ws": "^8.18.1",
         "tsup": "^8.5.1"
@@ -29,5 +33,11 @@
         "dist",
         "bin"
     ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/almadar-io/almadar-extensions.git",
+        "directory": "lsp"
+    },
+    "homepage": "https://github.com/almadar-io/almadar#readme",
     "license": "MIT"
 }

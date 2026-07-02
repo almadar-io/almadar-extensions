@@ -18,20 +18,13 @@ import {
 let client: LanguageClient;
 
 export function activate(context: vscode.ExtensionContext) {
-    const outputChannel = vscode.window.createOutputChannel('Almadar Orb');
+    const outputChannel = vscode.window.createOutputChannel('Almadar Orb', { log: true });
     outputChannel.appendLine('Almadar Orb extension activating...');
 
-    // The LSP server lives relative to the workspace root
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspaceRoot) {
-        outputChannel.appendLine('No workspace folder found, skipping LSP.');
-        return;
-    }
-
-    const serverModule = path.join(
-        workspaceRoot,
-        'packages', 'almadar-extensions', 'lsp', 'dist', 'server.js'
-    );
+    // The LSP server is bundled into this extension's own dist/ (self-contained,
+    // no external node_modules needed) — works the same whether opened against
+    // this monorepo or an unrelated .orb/.lolo project.
+    const serverModule = path.join(context.extensionPath, 'dist', 'server.js');
 
     outputChannel.appendLine(`LSP server path: ${serverModule}`);
 
@@ -49,7 +42,10 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'orb' }],
+        documentSelector: [
+            { scheme: 'file', language: 'orb' },
+            { scheme: 'file', language: 'lolo' },
+        ],
         outputChannel,
     };
 

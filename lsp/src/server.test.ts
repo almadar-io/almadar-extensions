@@ -5,6 +5,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 const ROOT = path.resolve(__dirname, '../../../../');
+// lsp/'s own package dir — running npx with this as cwd lets it resolve
+// @almadar/orb from lsp/node_modules directly instead of falling back to a
+// slow registry/npx-cache lookup (ROOT has no local @almadar/orb install).
+const LSP_ROOT = path.resolve(__dirname, '..');
 
 // ============================================================================
 // Unit tests for jsonPathToPosition
@@ -61,13 +65,16 @@ describe('jsonPathToPosition', () => {
 // CLI integration tests
 // ============================================================================
 
-describe('almadar validate CLI', () => {
+describe('orb validate CLI', () => {
     const schemasDir = path.join(ROOT, 'almadar', 'tests', 'schemas');
 
-    // Use npx to run @almadar/cli (the binary isn't in node_modules/.bin)
+    // Use npx to run @almadar/orb (the binary isn't in node_modules/.bin).
+    // @almadar/cli (bin: "almadar") is a separate, stale, unmaintained
+    // package predating .lolo support — @almadar/orb (bin: "orb") is the
+    // actively-published CLI and the one resolveOrbBinary() targets.
     function runValidate(schemaPath: string): string {
-        return execFileSync('npx', ['-y', '@almadar/cli', 'validate', '--json', schemaPath], {
-            cwd: ROOT,
+        return execFileSync('npx', ['-y', '@almadar/orb', 'validate', '--json', schemaPath], {
+            cwd: LSP_ROOT,
             encoding: 'utf-8',
             timeout: 30_000,
         });
@@ -127,5 +134,24 @@ describe('almadar validate CLI', () => {
         const lines = content.split('\n');
         expect(pos.line).toBeLessThan(lines.length);
         expect(pos.line).toBeGreaterThan(0);
+    });
+
+    // A .lolo parse error carries a real "<input>:LINE:COL" source locator
+    // (not a JSON-pointer path) — server.ts's LOLO_SOURCE_POS regex parses
+    // this directly instead of routing it through jsonPathToPosition.
+    it('should produce a LOLO_PARSE_ERROR with an <input>:LINE:COL path for invalid .lolo source', () => {
+        const tmpFile = path.join(ROOT, '__test_invalid.lolo');
+        try {
+            fs.writeFileSync(tmpFile, 'app Test "desc"\n\norbital Foo\n  entity Foo\n    field id: string\n', 'utf-8');
+            const stdout = runValidate(tmpFile);
+            const result = JSON.parse(stdout);
+            expect(result.valid).toBe(false);
+            expect(result.errors).toBeDefined();
+            const err = result.errors[0];
+            expect(err.code).toBe('LOLO_PARSE_ERROR');
+            expect(err.path).toMatch(/^<input>:\d+:\d+$/);
+        } finally {
+            try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        }
     });
 });

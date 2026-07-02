@@ -1,0 +1,350 @@
+==================
+Minimal orbital
+==================
+
+orbital Foo {
+  entity Bar {
+    id : string!
+  }
+}
+
+---
+
+(source_file
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))))
+
+==================
+Type alias union
+==================
+
+type Status = active | inactive | pending
+orbital O {
+  entity E { id : string! }
+}
+
+---
+
+(source_file
+  (type_alias
+    name: (identifier)
+    body: (type_alias_body
+      (type_expr
+        (type_union
+          (type_atom
+            (identifier))
+          (type_atom
+            (identifier))
+          (type_atom
+            (identifier))))))
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))))
+
+==================
+Type alias Event form
+==================
+
+type FooLoaded = Event Foo "desc"
+orbital O {
+  entity E { id : string! }
+}
+
+---
+
+(source_file
+  (type_alias
+    name: (identifier)
+    body: (type_alias_body
+      (event_type_body
+        (type_expr
+          (type_atom
+            (identifier)))
+        (string))))
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))))
+
+==================
+Trait with state and effect
+==================
+
+orbital O {
+  entity E { id : string! }
+  trait T -> E [interaction] {
+    state s {
+      EVT -> s
+        (set @entity.x 1)
+    }
+  }
+}
+
+---
+
+(source_file
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))
+    (trait
+      name: (identifier)
+      (arrow)
+      entity: (identifier)
+      (bracket_tags
+        (bracket_tag
+          (identifier)))
+      (state_block
+        name: (identifier)
+        (transition
+          event: (event_ref
+            (event_name))
+          (arrow)
+          target: (identifier)
+          (sexpr
+            (sexpr_op
+              (identifier))
+            (sigil)
+            (number)))))))
+
+==================
+Guard transition with operator symbol
+==================
+
+orbital O {
+  entity E { id : string! }
+  trait T -> E {
+    state s {
+      EVT -> t when (< @entity.x 3)
+        (set @entity.x 1)
+    }
+  }
+}
+
+---
+
+(source_file
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))
+    (trait
+      name: (identifier)
+      (arrow)
+      entity: (identifier)
+      (state_block
+        name: (identifier)
+        (transition
+          event: (event_ref
+            (event_name))
+          (arrow)
+          target: (identifier)
+          (sexpr
+            (sexpr_op
+              (operator_symbol))
+            (sigil)
+            (number))
+          (sexpr
+            (sexpr_op
+              (identifier))
+            (sigil)
+            (number)))))))
+
+==================
+Listens block with dotted cross-orbital reference
+==================
+
+orbital O {
+  entity E { id : string! }
+  trait T -> E {
+    state s { I -> s }
+    listens {
+      Other.DONE -> LOCAL_EVT
+      SIMPLE { field : string }
+    }
+  }
+}
+
+---
+
+(source_file
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))
+    (trait
+      name: (identifier)
+      (arrow)
+      entity: (identifier)
+      (state_block
+        name: (identifier)
+        (transition
+          event: (event_ref
+            (event_name))
+          (arrow)
+          target: (identifier)))
+      (listens_block
+        (listen_decl
+          source: (dotted_reference
+            (event_name)
+            (identifier))
+          (arrow)
+          local_event: (event_name))
+        (listen_decl
+          source: (event_name)
+          (type_object
+            name: (identifier)
+            type: (type_expr
+              (type_atom
+                (identifier)))))))))
+
+==================
+Emits block with scope and bare event
+==================
+
+orbital O {
+  entity E { id : string! }
+  trait T -> E {
+    state s { I -> s }
+    emits {
+      FOO -> external { id : string }
+      BAR
+    }
+  }
+}
+
+---
+
+(source_file
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))
+    (trait
+      name: (identifier)
+      (arrow)
+      entity: (identifier)
+      (state_block
+        name: (identifier)
+        (transition
+          event: (event_ref
+            (event_name))
+          (arrow)
+          target: (identifier)))
+      (emits_block
+        (emit_decl
+          event: (event_name)
+          (arrow)
+          scope: (identifier)
+          (type_object
+            name: (identifier)
+            type: (type_expr
+              (type_atom
+                (identifier)))))
+        (emit_decl
+          event: (event_name))))))
+
+==================
+Page declaration with alias
+==================
+
+orbital O {
+  entity E { id : string! }
+  trait T -> E { state s { I -> s } }
+  page "/foo" as FooPage -> T
+}
+
+---
+
+(source_file
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))
+    (trait
+      name: (identifier)
+      (arrow)
+      entity: (identifier)
+      (state_block
+        name: (identifier)
+        (transition
+          event: (event_ref
+            (event_name))
+          (arrow)
+          target: (identifier))))
+    (page
+      path: (string)
+      name: (identifier)
+      (arrow)
+      trait: (identifier))))
+
+==================
+Comment forms: line, lisp-style, and block
+==================
+
+# line comment
+;; lisp comment
+#= block
+comment =#
+orbital O {
+  entity E { id : string! }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr
+          (type_atom
+            (identifier)))))))
