@@ -54,6 +54,11 @@ jobs:
         working-directory: lsp
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          npm publish --access public
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@almadar/orb-lsp@$VERSION" version >/dev/null 2>&1; then
+            echo "@almadar/orb-lsp@$VERSION already published — skipping (idempotent)."
+          else
+            npm publish --access public
+          fi
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
