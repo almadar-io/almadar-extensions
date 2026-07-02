@@ -39,7 +39,12 @@ jobs:
       # so it isn't reachable via the pnpm workspace/publish above.
       - name: Install lsp/ dependencies
         working-directory: lsp
-        run: npm ci
+        # --legacy-peer-deps: @almadar/ui declares an optional peer on
+        # `three` (react-three-fiber 3D stack, unused by the LSP's SVG-only
+        # jazari renderer) narrower than what's resolved elsewhere in the
+        # tree; `npm ci` enforces peer satisfiability strictly where `npm
+        # install` only warns, so it needs the same override CI-side.
+        run: npm ci --legacy-peer-deps
 
       - name: Build lsp/
         working-directory: lsp
