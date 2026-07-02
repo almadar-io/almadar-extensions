@@ -25,5 +25,5 @@ repository = "https://github.com/almadar-io/almadar-extensions"
 # `compile_grammar`/`checkout_repo`) and refuses to reuse an existing
 # non-git-clone directory there. The real source lives at
 # `editors/zed/tree-sitter-lolo` specifically to avoid that collision.
-rev = "REPLACE_WITH_COMMIT_SHA_AFTER_PUSH"
+rev = "057f493c1a5f0ea257d3aa707a73ac6e680523fd"
 path = "editors/zed/tree-sitter-lolo"
