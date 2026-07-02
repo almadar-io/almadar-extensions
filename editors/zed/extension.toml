@@ -1,9 +1,9 @@
 id = "orb"
 name = "Orb"
-version = "1.1.0"
+version = "1.2.0"
 description = "Language support for .orb and .lolo files — syntax highlighting, validation, and S-expression support for the Orb/Lolo languages"
 authors = ["Almadar <hello@almadar.io>"]
-repository = "https://github.com/almadar-io/zed-orbital"
+repository = "https://github.com/almadar-io/almadar-extensions"
 schema_version = 1
 
 [language_servers.orb-lsp]
@@ -11,14 +11,12 @@ name = "Orb LSP"
 languages = ["Orb", "Lolo"]
 
 [grammars.lolo]
-repository = "https://github.com/almadar-io/zed-orbital"
-# TODO: set to the real commit SHA once this change is committed and pushed
-# to almadar-io/zed-orbital — Zed's [grammars.*] schema (GrammarManifestEntry
-# in zed-industries/zed crates/extension/src/extension_manifest.rs) requires
-# a real, resolvable `rev` on the `repository` remote; there is no "build
-# from local working tree" option. Verified this repo+path shape against a
-# real same-monorepo example (GaijinEntertainment/daScript's Zed extension:
-# `repository` = the whole project repo, `path` = the grammar's subdirectory
-# within it) rather than assumed.
-rev = "REPLACE_WITH_COMMIT_SHA_AFTER_PUSH"
+repository = "https://github.com/almadar-io/almadar-extensions"
+# Zed's [grammars.*] schema (GrammarManifestEntry in zed-industries/zed
+# crates/extension/src/extension_manifest.rs) requires a real, resolvable
+# `rev` on the `repository` remote — no "build from local working tree"
+# option. Verified this repo+path shape against a real same-monorepo
+# example (GaijinEntertainment/daScript's Zed extension: `repository` =
+# the whole project repo, `path` = the grammar's subdirectory within it).
+rev = "b1049f0504710d5ed63279ef714171bc2de88733"
 path = "editors/zed/grammars/lolo"
