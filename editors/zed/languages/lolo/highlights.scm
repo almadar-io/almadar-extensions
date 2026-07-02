@@ -64,9 +64,44 @@
 ; State / trait-binding names
 (state_block name: (identifier) @variable)
 
-; S-expression call head — the effect/operator name
+; S-expression call head — the effect/operator name. Generic fallback
+; first (namespaced runtime calls: math/add, array/map, ...), then the
+; more specific effect / control-flow predicates below override it.
 (sexpr_op (identifier) @function)
 (operator_symbol) @operator
+
+; Effect operators (set, fetch, persist, emit, render-ui, navigate, ...)
+; render as keywords, matching .orb's Zed highlighting.
+((sexpr_op (identifier) @keyword)
+  (#any-of? @keyword
+    "call-service"
+    "despawn"
+    "emit"
+    "fetch"
+    "fetch-stream"
+    "log"
+    "navigate"
+    "notify"
+    "persist"
+    "ref"
+    "render-ui"
+    "send-server"
+    "set"
+    "spawn"))
+
+; Control-flow / logic s-expr operators (if, and, or, not, let, do, fn, ...)
+; also render as keywords.
+((sexpr_op (identifier) @keyword)
+  (#any-of? @keyword
+    "and"
+    "do"
+    "fn"
+    "if"
+    "let"
+    "list"
+    "not"
+    "or"
+    "when"))
 
 ; Primitive types
 (type_atom (identifier) @type.builtin)

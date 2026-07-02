@@ -15,8 +15,8 @@ importers:
         specifier: '>=16.103.2'
         version: 16.105.0
       '@almadar/syntax':
-        specifier: '>=1.6.0'
-        version: 1.6.0
+        specifier: '>=1.6.1'
+        version: 1.6.1
     devDependencies:
       '@almadar/eslint-plugin':
         specifier: '>=2.8.2'
@@ -53,8 +53,8 @@ packages:
   '@almadar/std@16.105.0':
     resolution: {integrity: sha512-7Ib5qcuEbrr67NclEtu1eakR34U8OE10N6cbgwG0RcvHcr3iIw3a39MuJiDHQJZ1WRt2lcsSpE4x5PzDCT+pgA==}
 
-  '@almadar/syntax@1.6.0':
-    resolution: {integrity: sha512-hrPV7te3vom0SInhb6TsgGoBnJEtDXl76NV2q8n+yC1h3cBW5Nuvw87h7WxrnRNTkIBXBbmt0MmUcxe3u5kFgg==}
+  '@almadar/syntax@1.6.1':
+    resolution: {integrity: sha512-fmkC5vWAfjf0g8uukZNDsg82G6TYe92SQIQD38hntXYQ09DaR65eTWCCxcCX0IonqZWThkKqkwZH8GWCkD+Adg==}
 
   '@esbuild/aix-ppc64@0.27.7':
     resolution: {integrity: sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg==}
@@ -902,7 +902,7 @@ snapshots:
     dependencies:
       '@almadar/core': 10.14.0
 
-  '@almadar/syntax@1.6.0':
+  '@almadar/syntax@1.6.1':
     dependencies:
       '@almadar/core': 10.14.0
       '@almadar/patterns': 2.89.0

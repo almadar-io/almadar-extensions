@@ -233,3 +233,153 @@ export function getLoloHighlightData(): LoloHighlightData {
         behaviorNames: tokens.behaviorNames,
     };
 }
+
+/** Format a list of literal operator names as a tree-sitter `#any-of?` args list. */
+function anyOfArgs(names: readonly string[]): string {
+    return [...names].sort().map((n) => `"${n.replace(/(["\\])/g, '\\$1')}"`).join('\n    ');
+}
+
+/**
+ * Generate the Zed `highlights.scm` for `.lolo` files.
+ *
+ * The s-expression call head — `(sexpr_op (identifier))` — has no further
+ * grammar-level distinction between an effect (`set`, `fetch`, ...), a
+ * control/logic operator (`if`, `and`, `let`, ...), and a namespaced runtime
+ * call (`math/add`, `array/map`, ...); all three parse to the same node
+ * shape. Differentiate them here via `#any-of?` predicates against the
+ * captured text, sourced from @almadar/syntax's tokens.json (the same
+ * registry the VSCode TextMate grammar and prism-lolo.ts read), so effect
+ * and control-flow operators render as keywords — matching `.orb`'s Zed
+ * highlighting — instead of collapsing into one generic function color.
+ * Later patterns win over earlier ones for the same node (standard
+ * tree-sitter query precedence), so these must come after the generic
+ * `(sexpr_op (identifier) @function)` fallback.
+ */
+export function generateLoloZedHighlights(): string {
+    const tokens = loadLoloTokens();
+    const controlAndLogic = [
+        ...(tokens.operatorsByNamespace.control ?? []),
+        ...(tokens.operatorsByNamespace.logic ?? []),
+    ];
+
+    return `; Comments
+(comment) @comment
+
+; Literal keywords
+[
+  "app"
+  "orbital"
+  "uses"
+  "from"
+  "entity"
+  "type"
+  "derived"
+  "trait"
+  "initial"
+  "state"
+  "for"
+  "emits"
+  "listens"
+  "ticks"
+  "config"
+  "page"
+  "with"
+  "as"
+  "when"
+  "every"
+  "@rebindable"
+] @keyword
+
+; Strings
+(string) @string
+(escape_sequence) @string.escape
+
+; Numbers / booleans / null
+(number) @number
+(boolean) @boolean
+(null) @constant.builtin
+
+; Bindings: @entity.field, ?payload.field
+(sigil) @variable.special
+(payload_sigil) @variable.special
+
+; Event keys (UPPER_SNAKE / PascalCase transition triggers)
+(event_name) @constant
+(event_arrow) @constant
+
+; Declaration names: constructor-like (entity/trait/orbital/page names)
+(orbital name: (identifier) @type)
+(entity name: (identifier) @type)
+(trait name: (identifier) @type)
+(trait entity: (identifier) @type)
+(page name: (identifier) @type)
+(page trait: (identifier) @type)
+(type_alias name: (identifier) @type)
+(dotted_reference (event_name) @type)
+(dotted_reference (identifier) @type)
+
+; Field / property names
+(entity_field name: (identifier) @property)
+(config_field name: (identifier) @property)
+(type_object name: (identifier) @property)
+(object_literal key: (identifier) @property)
+(object_literal key: (string) @property)
+
+; State / trait-binding names
+(state_block name: (identifier) @variable)
+
+; S-expression call head — the effect/operator name. Generic fallback
+; first (namespaced runtime calls: math/add, array/map, ...), then the
+; more specific effect / control-flow predicates below override it.
+(sexpr_op (identifier) @function)
+(operator_symbol) @operator
+
+; Effect operators (set, fetch, persist, emit, render-ui, navigate, ...)
+; render as keywords, matching .orb's Zed highlighting.
+((sexpr_op (identifier) @keyword)
+  (#any-of? @keyword
+    ${anyOfArgs(tokens.effectTypes)}))
+
+; Control-flow / logic s-expr operators (if, and, or, not, let, do, fn, ...)
+; also render as keywords.
+((sexpr_op (identifier) @keyword)
+  (#any-of? @keyword
+    ${anyOfArgs(controlAndLogic)}))
+
+; Primitive types
+(type_atom (identifier) @type.builtin)
+
+; Annotation tags: @description, @synonyms, @label, @tier, ...
+(annotation_tag) @attribute
+
+; Punctuation
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
+
+[
+  ","
+  ":"
+  "::"
+] @punctuation.delimiter
+
+(arrow) @operator
+
+[
+  "="
+  "!"
+  "*"
+  "+"
+  "?"
+  "|"
+  "&"
+] @operator
+
+(identifier) @variable
+`;
+}

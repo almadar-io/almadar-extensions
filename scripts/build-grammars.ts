@@ -14,7 +14,7 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { generateSExprGrammar } from '../src/sexpr-grammar.js';
-import { generateLoloTmLanguage } from '../src/lolo-grammar.js';
+import { generateLoloTmLanguage, generateLoloZedHighlights } from '../src/lolo-grammar.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, '..', 'dist');
@@ -37,3 +37,10 @@ writeFileSync(loloOutPath, JSON.stringify(loloGrammar, null, 2), 'utf-8');
 console.log(`✅ Generated lolo.tmLanguage.json`);
 console.log(`   → ${loloGrammar.patterns.length} patterns`);
 console.log(`   → ${loloOutPath}`);
+
+// .lolo Zed highlights.scm — read directly from the extension's source tree
+// by Zed (no dist/ copy step, unlike the grammar/LSP artifacts above), so
+// write straight into editors/zed/languages/lolo/ and commit the result.
+const loloZedOutPath = join(__dirname, '..', 'editors', 'zed', 'languages', 'lolo', 'highlights.scm');
+writeFileSync(loloZedOutPath, generateLoloZedHighlights(), 'utf-8');
+console.log(`✅ Generated editors/zed/languages/lolo/highlights.scm`);
