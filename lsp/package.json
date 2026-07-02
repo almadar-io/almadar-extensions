@@ -13,16 +13,17 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "@almadar/cli": "^1.0.10",
-        "vscode-languageserver": "^9.0.0",
-        "vscode-languageserver-textdocument": "^1.0.0",
-        "ws": "^8.18.0"
+        "@almadar/cli": "^1.9.3",
+        "vscode-languageserver": "^10.1.0",
+        "vscode-languageserver-textdocument": "^1.0.12",
+        "ws": "^8.21.0"
     },
     "devDependencies": {
-        "@almadar/ui": ">=2.48.0",
-        "@types/node": "^18.0.0",
-        "@types/ws": "^8.5.0",
-        "tsup": "^8.0.0"
+        "@almadar/core": ">=10.13.0",
+        "@almadar/ui": ">=5.93.0",
+        "@types/node": "^22.0.0",
+        "@types/ws": "^8.18.1",
+        "tsup": "^8.5.1"
     },
     "files": [
         "dist",

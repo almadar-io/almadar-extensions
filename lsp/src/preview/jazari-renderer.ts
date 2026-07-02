@@ -3,17 +3,18 @@
  * No React dependency — outputs raw SVG markup using the shared layout engine.
  */
 
-import { computeJazariLayout } from '@almadar/ui/lib/jazari/layout';
 import {
+  computeJazariLayout,
   gearTeethPath,
   lockIconPath,
   brainIconPath,
   pipeIconPath,
   eightPointedStarPath,
   arrowheadPath,
-} from '@almadar/ui/lib/jazari/svg-paths';
-import { JAZARI_COLORS } from '@almadar/ui/lib/jazari/types';
-import type { JazariLayout, JazariArmLayout, JazariGearLayout } from '@almadar/ui/lib/jazari/types';
+  JAZARI_COLORS,
+} from '@almadar/ui/lib';
+import type { JazariLayout, JazariArmLayout, JazariGearLayout } from '@almadar/ui/lib';
+import type { FieldValue } from '@almadar/core';
 import { getSchemaValue } from './arabic-keys.js';
 
 // ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ function gObj(obj: SchemaObj, arKey: string, enKey: string): SchemaObj | null {
 interface ExtractedSM {
   traitName: string;
   states: Array<{ name: string; isInitial?: boolean; isTerminal?: boolean }>;
-  transitions: Array<{ from: string; to: string; event: string; guard?: unknown; effects?: unknown[] }>;
+  transitions: Array<{ from: string; to: string; event: string; guard?: FieldValue; effects?: FieldValue[] }>;
   entityFields: string[];
   isArabic: boolean;
 }
@@ -102,8 +103,8 @@ function extractFirstStateMachine(schema: SchemaObj): ExtractedSM | null {
         from: gStr(t, 'من', 'from'),
         to: gStr(t, 'إلى', 'to'),
         event: gStr(t, 'حدث', 'event'),
-        guard: getSchemaValue(t, 'حراس', 'guard') ?? getSchemaValue(t, 'حراس', 'guards'),
-        effects: gArr(t, 'تأثيرات', 'effects') as unknown[],
+        guard: (getSchemaValue(t, 'حراس', 'guard') ?? getSchemaValue(t, 'حراس', 'guards')) as FieldValue | undefined,
+        effects: gArr(t, 'تأثيرات', 'effects') as FieldValue[],
       }));
 
       if (states.length > 0) {

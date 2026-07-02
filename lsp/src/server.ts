@@ -18,7 +18,7 @@ import {
     TextDocumentSyncKind,
     Diagnostic,
     DiagnosticSeverity,
-} from 'vscode-languageserver/node.js';
+} from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { jsonPathToPosition } from './json-path.js';
@@ -87,7 +87,7 @@ connection.onInitialize((params: InitializeParams) => {
 });
 
 // Custom request: get preview URL for a document (pinned) or follow mode
-connection.onRequest('almadar/previewUrl', (params: { uri?: string }) => {
+connection.onRequest('almadar/previewUrl', (params: { uri?: string }): { url: string | null } => {
     const port = previewServer.getPort();
     if (!port) return { url: null };
     // With uri: pinned to that document. Without: follow mode (auto-follows active file)
