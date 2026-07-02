@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Almadar OrbLSP — Language Server for .orb files
+ * Almadar OrbLSP — Language Server for .orb and .lolo files
  *
- * Provides TypeScript-powered validation by wrapping .orb JSON
- * as `satisfies OrbitalSchema` and delegating to TypeScript's
- * LanguageService for diagnostics.
+ * Validates by shelling out to `orb validate --json` (the @almadar/orb CLI)
+ * and mapping diagnostics back to the original file positions.
  *
  * Usage:
  *   npx @almadar/orb-lsp          (stdio mode, for editor integration)
