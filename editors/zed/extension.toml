@@ -18,5 +18,12 @@ repository = "https://github.com/almadar-io/almadar-extensions"
 # option. Verified this repo+path shape against a real same-monorepo
 # example (GaijinEntertainment/daScript's Zed extension: `repository` =
 # the whole project repo, `path` = the grammar's subdirectory within it).
-rev = "b1049f0504710d5ed63279ef714171bc2de88733"
-path = "editors/zed/grammars/lolo"
+#
+# `path` must NOT live under `editors/zed/grammars/` — Zed's extension
+# builder always clones `repository`@`rev` into
+# `<extension_dir>/grammars/<grammar_name>` (extension_builder.rs
+# `compile_grammar`/`checkout_repo`) and refuses to reuse an existing
+# non-git-clone directory there. The real source lives at
+# `editors/zed/tree-sitter-lolo` specifically to avoid that collision.
+rev = "REPLACE_WITH_COMMIT_SHA_AFTER_PUSH"
+path = "editors/zed/tree-sitter-lolo"

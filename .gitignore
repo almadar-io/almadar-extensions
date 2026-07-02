@@ -10,6 +10,10 @@ editors/vscode/syntaxes/lolo.tmLanguage.json
 editors/vscode/*.vsix
 editors/zed/syntaxes/
 editors/zed/target/
+# Zed's extension builder clones [grammars.*] repos into
+# <extension_dir>/grammars/<name> at runtime — never commit that cache
+# (the real grammar source lives at editors/zed/tree-sitter-lolo).
+editors/zed/grammars/
 
 # LSP build artifacts
 lsp/dist/
