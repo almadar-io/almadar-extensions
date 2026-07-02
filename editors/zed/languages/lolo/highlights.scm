@@ -136,5 +136,3 @@
   "|"
   "&"
 ] @operator
-
-(identifier) @variable

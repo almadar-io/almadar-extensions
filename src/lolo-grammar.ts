@@ -379,7 +379,5 @@ export function generateLoloZedHighlights(): string {
   "|"
   "&"
 ] @operator
-
-(identifier) @variable
 `;
 }
