@@ -15,14 +15,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
@@ -34,21 +32,15 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # lsp/ is a separate published package (@almadar/orb-lsp) — it uses npm
-      # (not pnpm) as its own package manager, with its own package-lock.json,
-      # so it isn't reachable via the pnpm workspace/publish above.
+      # lsp/ is a separate published package (@almadar/orb-lsp) managed within
+      # the same workflow.
       - name: Install lsp/ dependencies
         working-directory: lsp
-        # --legacy-peer-deps: @almadar/ui declares an optional peer on
-        # `three` (react-three-fiber 3D stack, unused by the LSP's SVG-only
-        # jazari renderer) narrower than what's resolved elsewhere in the
-        # tree; `npm ci` enforces peer satisfiability strictly where `npm
-        # install` only warns, so it needs the same override CI-side.
-        run: npm ci --legacy-peer-deps
+        run: pnpm install --frozen-lockfile
 
       - name: Build lsp/
         working-directory: lsp
-        run: npm run build
+        run: pnpm build
 
       - name: Publish lsp/ (@almadar/orb-lsp)
         working-directory: lsp
@@ -58,7 +50,7 @@ jobs:
           if npm view "@almadar/orb-lsp@$VERSION" version >/dev/null 2>&1; then
             echo "@almadar/orb-lsp@$VERSION already published — skipping (idempotent)."
           else
-            npm publish --access public
+            pnpm publish --access public
           fi
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
