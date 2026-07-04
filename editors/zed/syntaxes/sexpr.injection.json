@@ -60,11 +60,23 @@
     },
     {
       "name": "support.function.ml-effect.sexpr",
-      "match": "(?<=\")(train/checkForbiddenOutputs|train/getMaxWeightMagnitude|train/checkWeightMagnitude|train/computeAdvantages|train/checkConstraints|train/checkRegression|train/getGradientNorm|train/computeReturns|train/clipGradients|train/crossEntropy|train/clipWeights|train/sampleBatch|train/validate|train/huber|nn/forward|train/loop|train/step|train/adam|train/mse|train/sgd)(?=\")"
+      "match": "(?<=\")(train/checkForbiddenOutputs|train/getMaxWeightMagnitude|train/checkWeightMagnitude|train/computeAdvantages|train/checkConstraints|train/checkRegression|train/getGradientNorm|train/computeReturns|train/clipGradients|train/crossEntropy|train/clipWeights|train/sampleBatch|checkpoint/save|checkpoint/load|train/validate|train/huber|nn/forward|train/loop|train/step|train/adam|train/mse|train/sgd|evaluate|forward|train)(?=\")"
     },
     {
       "name": "support.function.ml-tensor.sexpr",
-      "match": "(?<=\")(tensor/outOfRangeIndices|tensor/outOfRangeDims|tensor/clampPerDim|tensor/allInRange|tensor/reshape|tensor/flatten|tensor/toArray|tensor/matmul|tensor/argmax|tensor/toList|tensor/zeros|tensor/randn|tensor/shape|tensor/slice|tensor/clamp|tensor/from|tensor/ones|tensor/rand|tensor/mean|tensor/norm|tensor/get|tensor/add|tensor/sub|tensor/mul|tensor/div|tensor/dot|tensor/sum|tensor/max|tensor/min)(?=\")"
+      "match": "(?<=\")(tensor/outOfRangeIndices|tensor/outOfRangeDims|tensor/clampPerDim|tensor/allInRange|tensor/transpose|tensor/unsqueeze|tensor/reshape|tensor/flatten|tensor/toArray|tensor/squeeze|tensor/matmul|tensor/argmax|tensor/toList|tensor/zeros|tensor/randn|tensor/shape|tensor/slice|tensor/clamp|tensor/stack|tensor/from|tensor/ones|tensor/rand|tensor/mean|tensor/norm|tensor/get|tensor/add|tensor/sub|tensor/mul|tensor/div|tensor/dot|tensor/sum|tensor/max|tensor/min|tensor/cat)(?=\")"
+    },
+    {
+      "name": "support.function.ml-graph.sexpr",
+      "match": "(?<=\")(graph/from-adjacency|graph/from-edge-list|graph/add-self-loops|graph/from-entities|graph/to-undirected|graph/node-features|graph/edge-features|graph/edge-index|graph/num-nodes|graph/num-edges|graph/subgraph|graph/degree|graph/k-hop|graph/batch)(?=\")"
+    },
+    {
+      "name": "support.function.ml-contract.sexpr",
+      "match": "(?<=\")(contract/tensor-to-payload|contract/entity-to-tensor|contract/validate-output|contract/validate-input|contract/clamp-output|contract/violations)(?=\")"
+    },
+    {
+      "name": "support.function.ml-data.sexpr",
+      "match": "(?<=\")(data/dataloader|data/normalize|data/tokenize|data/dataset|data/augment|data/split|data/pad)(?=\")"
     },
     {
       "name": "support.function.prob.sexpr",

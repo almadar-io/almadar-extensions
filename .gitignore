@@ -24,3 +24,4 @@ node_modules/
 
 # Rust/WASM
 *.wasm
+.turbo/
