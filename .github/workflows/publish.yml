@@ -36,7 +36,9 @@ jobs:
       # the same workflow.
       - name: Install lsp/ dependencies
         working-directory: lsp
-        run: pnpm install --frozen-lockfile
+        # lsp/ ships no pnpm-lock.yaml (never migrated to pnpm) → frozen install
+        # aborts with ERR_PNPM_NO_LOCKFILE. Resolve fresh instead.
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build lsp/
         working-directory: lsp
