@@ -17,6 +17,23 @@ module.exports = grammar({
 
   word: $ => $.identifier,
 
+  // `(a b)` — `a` is the call head (sexpr_op) but also matches the
+  // identifier alternative of _sexpr_arg. Harmless: GLR keeps both and
+  // the op-first parse always wins for ≥1 identifier. Without this the
+  // reformed `sexpr` rule (op and args as independent slots, needed for
+  // nested group-as-arg forms) won't generate.
+  conflicts: $ => [
+    [$.sexpr_op, $._sexpr_arg],
+    // `<` is operator_symbol AND the JSX opening delimiter. In value
+    // position the JSX parse always wins (an operator-only `<` can't be
+    // followed by a tag name); GLR keeps both.
+    [$.operator_symbol, $.jsx_element],
+    [$.type_atom, $._value],
+    [$.type_atom, $._sexpr_arg],
+    [$.type_atom, $.sexpr_op, $._sexpr_arg],
+    [$.type_object, $.object_literal],
+  ],
+
   rules: {
     source_file: $ => seq(
       optional($.app_header),
@@ -59,6 +76,8 @@ module.exports = grammar({
     type_alias: $ => seq(
       'type',
       field('name', $.identifier),
+      // Optional single type parameter: `type Browsable T = ...`.
+      optional(field('param', $.identifier)),
       '=',
       field('body', $.type_alias_body),
     ),
@@ -66,7 +85,16 @@ module.exports = grammar({
     // no separate enum rule needed — type_expr already covers the `A | B | C` shape.
     type_alias_body: $ => choice(
       $.event_type_body,
+      $.entity_type_body,
       $.type_expr,
+    ),
+    // `type X = Entity [persistent: c] { fields }` and the Trait/Page/Orbital
+    // shape-keyword bodies (parser/type.rs `parse_type_body_atom`).
+    entity_type_body: $ => seq(
+      choice('Entity', 'Trait', 'Page', 'Orbital'),
+      optional($.bracket_tags),
+      optional($.type_object),
+      optional(seq($.arrow, $.identifier)),
     ),
     // `Event <TypeExpr> "description"` — the payload-event type-alias form.
     event_type_body: $ => seq('Event', $.type_expr, optional($.string)),
@@ -109,9 +137,15 @@ module.exports = grammar({
       ':',
       field('type', $.type_expr),
       optional('!'),
-      optional(seq('=', field('default', choice($.derived_value, $._value)))),
+      // Trailing field annotations: string-valued (`@description "..."`,
+      // `@synonyms "..."`) or flag (`@key`, `@unique`, `@intrinsic`).
+      repeat($.field_annotation),
+      optional(seq('=', field('default', choice($.derived_value, $._sexpr_arg)))),
     ),
     derived_value: $ => seq('derived', $.sexpr),
+    // `@key` / `@unique` / `@description "..."` on an entity field. The
+    // string is optional so the bare-sigil flag form parses too.
+    field_annotation: $ => seq($.annotation_tag, optional($.string)),
 
     // ── Types ─────────────────────────────────────────────────────────────
     type_expr: $ => choice(
@@ -134,10 +168,13 @@ module.exports = grammar({
     type_relation_many_nonempty: $ => prec(2, seq($._type_atom_or_group, '+')),
     type_optional: $ => prec(2, seq($._type_atom_or_group, '?')),
     _type_atom_or_group: $ => choice(
+      $.type_map,
       $.type_atom,
       $.type_object,
       seq('(', $.type_expr, ')'),
     ),
+    // `Map K V` — built-in dynamic-key map, applied by juxtaposition.
+    type_map: $ => prec(1, prec.dynamic(1, seq('Map', $._type_atom_or_group, $._type_atom_or_group))),
     type_atom: $ => choice($.identifier, $.string),
     // `.lolo` object types are newline-separated with an *optional* comma
     // (see orbital-lolo parser/type.rs — `if Comma { advance }` then
@@ -145,7 +182,7 @@ module.exports = grammar({
     // `field optional(',')` matches both `{ a : T b : U }` and `{ a : T, b : U }`.
     type_object: $ => seq(
       '{',
-      repeat(seq(field('name', $.identifier), ':', field('type', $.type_expr), optional('!'), optional(','))),
+      repeat(seq(field('name', $.identifier), choice(':', '::'), field('type', $.type_expr), optional('!'), optional(','))),
       '}',
     ),
 
@@ -158,18 +195,41 @@ module.exports = grammar({
     ),
 
     // ── Trait ─────────────────────────────────────────────────────────────
+    // Two forms (parser/trait.rs): direct (`trait Name -> E {…}`) and
+    // reference (`trait Name = Alias.traits.X [-> E] {…}`). The `=` after
+    // the name disambiguates.
     trait: $ => seq(
       'trait',
       field('name', $.identifier),
-      $.arrow,
-      optional('@rebindable'),
-      field('entity', $.identifier),
-      optional($.bracket_tags),
-      repeat($.annotation),
-      '{',
-      repeat($._trait_item),
-      '}',
+      optional($.type_annotation),
+      choice(
+        seq(
+          '=',
+          field('reference', $.dotted_reference),
+          optional(seq($.arrow, field('entity', $.identifier))),
+          '{', repeat($._trait_ref_item), '}',
+        ),
+        seq(
+          optional(seq($.arrow, optional('@rebindable'), field('entity', $.identifier))),
+          optional($.bracket_tags),
+          repeat($.annotation),
+          '{', repeat($._trait_item), '}',
+        ),
+      ),
     ),
+    _trait_ref_item: $ => choice(
+      $.trait_ref_events,
+      $.trait_ref_fields,
+      $.config_block,
+      $.listens_block,
+      $.emits_scope,
+      $.sexpr,
+    ),
+    // `events { OldEvent: NewEvent, ... }` and `fields { old: new, ... }`
+    // rename maps inside a trait-reference body.
+    trait_ref_events: $ => seq('events', optional(':'), '{', repeat(seq(field('from', $.identifier), ':', field('to', $.identifier), optional(','))), '}'),
+    trait_ref_fields: $ => seq('fields', optional(':'), '{', repeat(seq(field('from', $.identifier), ':', field('to', choice($.identifier, $.string)), optional(','))), '}'),
+    emits_scope: $ => seq('emitsScope', field('scope', $.identifier)),
     annotation: $ => seq($.annotation_tag, $.string),
     annotation_tag: $ => /@[a-zA-Z_][a-zA-Z0-9_]*/,
     _trait_item: $ => choice(
@@ -214,24 +274,31 @@ module.exports = grammar({
 
     emits_block: $ => seq('emits', '{', repeat($.emit_decl), '}'),
     emit_decl: $ => seq(
-      field('event', $.event_name),
+      field('event', choice($.event_name, $.sigil)),
       optional(seq($.arrow, field('scope', $.identifier))),
       optional($.type_object),
+      repeat($.annotation),
     ),
 
     listens_block: $ => seq('listens', '{', repeat($.listen_decl), '}'),
     listen_decl: $ => seq(
-      field('source', choice($.dotted_reference, $.event_name)),
+      field('source', choice($.dotted_reference, $.event_name, $.sigil)),
       optional($.type_object),
       optional(seq($.arrow, field('local_event', $.event_name))),
+      repeat($.annotation),
     ),
 
-    config_block: $ => seq('config', '{', repeat($.config_field), '}'),
+    config_block: $ => seq('config', optional(':'), '{', repeat(seq($.config_field, optional(','))), '}'),
     config_field: $ => seq(
       field('name', $.identifier),
       ':',
-      field('type', $.type_expr),
-      optional(seq('=', $._value)),
+      // RHS is either a type (`string`, `"a" | "b"`, `[T]`, `Map K V`) or a
+      // wiring value (`[ {...} ]`, `@config.x`, `"str"`, `5`). These overlap
+      // on identifier/string/object/array, so the conflicts are declared
+      // below; GLR keeps both and highlighting is identical either way.
+      field('value', choice($.type_expr, $._sexpr_arg)),
+      optional('!'),
+      optional(seq('=', field('default', $._sexpr_arg))),
       repeat($.annotation),
     ),
 
@@ -262,19 +329,27 @@ module.exports = grammar({
     ),
 
     // ── S-expressions (effects, guards, config defaults) ─────────────────
-    sexpr: $ => seq('(', optional(seq($.sexpr_op, repeat($._sexpr_arg))), ')'),
+    // An s-expression is `(`, an optional operator (call head), zero or
+    // more args, then `)`. Op and args are kept as separate optional /
+    // repeat slots (not `optional(seq(op, repeat(args)))`) so nested
+    // group-as-arg forms like `(let ((r 1)) (let ((cv 2)) @cv))` parse
+    // without GLR conflicts — the grouped form made the whole op+args
+    // blob ambiguous against a bare `(...)` group.
+    sexpr: $ => seq('(', optional($.sexpr_op), repeat($._sexpr_arg), ')'),
     // The real lexer wraps arithmetic/comparison symbols as plain Identifier
     // tokens (`+`, `-`, `*`, `/`, `%`, `<`, `>`, `<=`, `>=`, `==`, `!=`) so
     // they can appear in operator (call-head) position like any other op.
     sexpr_op: $ => choice($.identifier, '=', $.operator_symbol),
     operator_symbol: $ => choice('+', '-', '*', '/', '%', '<', '>', '<=', '>=', '==', '!='),
     _sexpr_arg: $ => choice(
+      $.jsx_element,
       $.sexpr,
       $.object_literal,
       $.array_literal,
       $._value,
       $.sigil,
       $.payload_sigil,
+      $.event_name,
       $.identifier,
     ),
     // Comma-optional, newline-separated (orbital-lolo parser/expression.rs).
@@ -285,11 +360,38 @@ module.exports = grammar({
     ),
     array_literal: $ => seq('[', repeat(seq($._sexpr_arg, optional(','))), ']'),
 
+    // ── JSX (render-element sugar; orbital-lolo parser/jsx.rs) ────────────
+    // `<Tag attr={expr}>…</Tag>` / `<Tag />` / `<trait.X />` /
+    // `<Alias.traits.Name …>`. JSX only appears in value position (an
+    // _sexpr_arg), so `<`/`>`/`/` here never collide with operator_symbol
+    // (which is only valid in sexpr_op position).
+    jsx_element: $ => seq(
+      '<', $.jsx_tag_name, repeat($.jsx_attribute),
+      choice(
+        '/>',
+        seq('>', repeat($._jsx_child), '</', $.jsx_tag_name, '>'),
+      ),
+    ),
+    _jsx_child: $ => choice($.jsx_element, $.jsx_expr_container),
+    jsx_expr_container: $ => seq('{', $._sexpr_arg, '}'),
+    jsx_tag_name: $ => seq($.identifier, repeat(seq('.', $.identifier))),
+    jsx_attribute: $ => seq(
+      field('name', $.identifier),
+      optional(seq('=', choice($.string, $.jsx_expr_container))),
+    ),
+
     // ── Values / atoms ────────────────────────────────────────────────────
     _value: $ => choice($.string, $.number, $.boolean, $.null),
     sigil: $ => /@[a-zA-Z_][a-zA-Z0-9_.]*/,
     payload_sigil: $ => /\?[a-zA-Z_][a-zA-Z0-9_.]*|\?/,
-    string: $ => seq('"', repeat(choice(/[^"\\]/, $.escape_sequence)), '"'),
+    // Wrapped in `token()` with the escape regex inlined so the whole
+    // string is ONE atomic lexical unit. Without this, the `comment`
+    // extra (`#...` line comment) wins over string content when a string
+    // value starts with `#` (e.g. color hex `"#fff"`) — tree-sitter's
+    // lexer can't "contain" a repeat-of-choice-of-named-rule, so the `#`
+    // inside the string leaks out as a comment start. Inlining costs us
+    // the `escape_sequence` capture node (removed from highlights.scm).
+    string: $ => token(seq('"', repeat(choice(/[^"\\]/, /\\[ntr"\\/]/)), '"')),
     escape_sequence: $ => /\\[ntr"\\/]/,
     number: $ => /-?[0-9]+(\.[0-9]+)?/,
     boolean: $ => choice('true', 'false'),

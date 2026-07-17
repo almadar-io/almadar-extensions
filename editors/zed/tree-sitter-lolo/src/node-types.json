@@ -75,7 +75,15 @@
           "named": true
         },
         {
+          "type": "event_name",
+          "named": true
+        },
+        {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
           "named": true
         },
         {
@@ -195,6 +203,60 @@
     "type": "config_field",
     "named": true,
     "fields": {
+      "default": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "array_literal",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "event_name",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "jsx_element",
+            "named": true
+          },
+          {
+            "type": "null",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "object_literal",
+            "named": true
+          },
+          {
+            "type": "payload_sigil",
+            "named": true
+          },
+          {
+            "type": "sexpr",
+            "named": true
+          },
+          {
+            "type": "sigil",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
@@ -205,10 +267,58 @@
           }
         ]
       },
-      "type": {
+      "value": {
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "array_literal",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "event_name",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "jsx_element",
+            "named": true
+          },
+          {
+            "type": "null",
+            "named": true
+          },
+          {
+            "type": "number",
+            "named": true
+          },
+          {
+            "type": "object_literal",
+            "named": true
+          },
+          {
+            "type": "payload_sigil",
+            "named": true
+          },
+          {
+            "type": "sexpr",
+            "named": true
+          },
+          {
+            "type": "sigil",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
           {
             "type": "type_expr",
             "named": true
@@ -222,22 +332,6 @@
       "types": [
         {
           "type": "annotation",
-          "named": true
-        },
-        {
-          "type": "boolean",
-          "named": true
-        },
-        {
-          "type": "null",
-          "named": true
-        },
-        {
-          "type": "number",
-          "named": true
-        },
-        {
-          "type": "string",
           "named": true
         }
       ]
@@ -288,6 +382,10 @@
           {
             "type": "event_name",
             "named": true
+          },
+          {
+            "type": "sigil",
+            "named": true
           }
         ]
       },
@@ -306,6 +404,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "annotation",
+          "named": true
+        },
         {
           "type": "arrow",
           "named": true
@@ -330,6 +432,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "emits_scope",
+    "named": true,
+    "fields": {
+      "scope": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -375,6 +493,10 @@
         "required": false,
         "types": [
           {
+            "type": "array_literal",
+            "named": true
+          },
+          {
             "type": "boolean",
             "named": true
           },
@@ -383,11 +505,39 @@
             "named": true
           },
           {
+            "type": "event_name",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "jsx_element",
+            "named": true
+          },
+          {
             "type": "null",
             "named": true
           },
           {
             "type": "number",
+            "named": true
+          },
+          {
+            "type": "object_literal",
+            "named": true
+          },
+          {
+            "type": "payload_sigil",
+            "named": true
+          },
+          {
+            "type": "sexpr",
+            "named": true
+          },
+          {
+            "type": "sigil",
             "named": true
           },
           {
@@ -416,6 +566,43 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "field_annotation",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "entity_type_body",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "arrow",
+          "named": true
+        },
+        {
+          "type": "bracket_tags",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "type_object",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -461,11 +648,161 @@
     }
   },
   {
+    "type": "field_annotation",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "annotation_tag",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "initial_decl",
     "named": true,
     "fields": {},
     "children": {
       "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "jsx_attribute",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "jsx_expr_container",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "jsx_element",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "jsx_attribute",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
+          "named": true
+        },
+        {
+          "type": "jsx_expr_container",
+          "named": true
+        },
+        {
+          "type": "jsx_tag_name",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "jsx_expr_container",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "array_literal",
+          "named": true
+        },
+        {
+          "type": "boolean",
+          "named": true
+        },
+        {
+          "type": "event_name",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
+          "named": true
+        },
+        {
+          "type": "null",
+          "named": true
+        },
+        {
+          "type": "number",
+          "named": true
+        },
+        {
+          "type": "object_literal",
+          "named": true
+        },
+        {
+          "type": "payload_sigil",
+          "named": true
+        },
+        {
+          "type": "sexpr",
+          "named": true
+        },
+        {
+          "type": "sigil",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "jsx_tag_name",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
       "required": true,
       "types": [
         {
@@ -500,6 +837,10 @@
           {
             "type": "event_name",
             "named": true
+          },
+          {
+            "type": "sigil",
+            "named": true
           }
         ]
       }
@@ -508,6 +849,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "annotation",
+          "named": true
+        },
         {
           "type": "arrow",
           "named": true
@@ -566,7 +911,15 @@
           "named": true
         },
         {
+          "type": "event_name",
+          "named": true
+        },
+        {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
           "named": true
         },
         {
@@ -726,7 +1079,15 @@
           "named": true
         },
         {
+          "type": "event_name",
+          "named": true
+        },
+        {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
           "named": true
         },
         {
@@ -838,21 +1199,6 @@
     }
   },
   {
-    "type": "string",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "escape_sequence",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
     "type": "tick_decl",
     "named": true,
     "fields": {
@@ -884,7 +1230,15 @@
           "named": true
         },
         {
+          "type": "event_name",
+          "named": true
+        },
+        {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
           "named": true
         },
         {
@@ -939,7 +1293,7 @@
     "fields": {
       "entity": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "identifier",
@@ -956,11 +1310,21 @@
             "named": true
           }
         ]
+      },
+      "reference": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "dotted_reference",
+            "named": true
+          }
+        ]
       }
     },
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "annotation",
@@ -983,11 +1347,19 @@
           "named": true
         },
         {
+          "type": "emits_scope",
+          "named": true
+        },
+        {
           "type": "initial_decl",
           "named": true
         },
         {
           "type": "listens_block",
+          "named": true
+        },
+        {
+          "type": "sexpr",
           "named": true
         },
         {
@@ -999,10 +1371,78 @@
           "named": true
         },
         {
+          "type": "trait_ref_events",
+          "named": true
+        },
+        {
+          "type": "trait_ref_fields",
+          "named": true
+        },
+        {
+          "type": "type_annotation",
+          "named": true
+        },
+        {
           "type": "with_block",
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "trait_ref_events",
+    "named": true,
+    "fields": {
+      "from": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "to": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "trait_ref_fields",
+    "named": true,
+    "fields": {
+      "from": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "to": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -1047,7 +1487,15 @@
           "named": true
         },
         {
+          "type": "event_name",
+          "named": true
+        },
+        {
           "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "jsx_element",
           "named": true
         },
         {
@@ -1104,6 +1552,16 @@
             "named": true
           }
         ]
+      },
+      "param": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
       }
     }
   },
@@ -1115,6 +1573,10 @@
       "multiple": false,
       "required": true,
       "types": [
+        {
+          "type": "entity_type_body",
+          "named": true
+        },
         {
           "type": "event_type_body",
           "named": true
@@ -1200,6 +1662,10 @@
           "named": true
         },
         {
+          "type": "type_map",
+          "named": true
+        },
+        {
           "type": "type_object",
           "named": true
         },
@@ -1243,6 +1709,10 @@
           "named": true
         },
         {
+          "type": "type_map",
+          "named": true
+        },
+        {
           "type": "type_object",
           "named": true
         },
@@ -1256,6 +1726,33 @@
         },
         {
           "type": "type_relation_many_nonempty",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "type_map",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_atom",
+          "named": true
+        },
+        {
+          "type": "type_expr",
+          "named": true
+        },
+        {
+          "type": "type_map",
+          "named": true
+        },
+        {
+          "type": "type_object",
           "named": true
         }
       ]
@@ -1304,6 +1801,10 @@
           "named": true
         },
         {
+          "type": "type_map",
+          "named": true
+        },
+        {
           "type": "type_object",
           "named": true
         }
@@ -1327,6 +1828,10 @@
           "named": true
         },
         {
+          "type": "type_map",
+          "named": true
+        },
+        {
           "type": "type_object",
           "named": true
         }
@@ -1347,6 +1852,10 @@
         },
         {
           "type": "type_expr",
+          "named": true
+        },
+        {
+          "type": "type_map",
           "named": true
         },
         {
@@ -1374,6 +1883,10 @@
         },
         {
           "type": "type_expr",
+          "named": true
+        },
+        {
+          "type": "type_map",
           "named": true
         },
         {
@@ -1457,10 +1970,6 @@
     "named": false
   },
   {
-    "type": "\"",
-    "named": false
-  },
-  {
     "type": "%",
     "named": false
   },
@@ -1505,6 +2014,10 @@
     "named": false
   },
   {
+    "type": "/>",
+    "named": false
+  },
+  {
     "type": ":",
     "named": false
   },
@@ -1514,6 +2027,10 @@
   },
   {
     "type": "<",
+    "named": false
+  },
+  {
+    "type": "</",
     "named": false
   },
   {
@@ -1545,7 +2062,27 @@
     "named": false
   },
   {
+    "type": "Entity",
+    "named": false
+  },
+  {
     "type": "Event",
+    "named": false
+  },
+  {
+    "type": "Map",
+    "named": false
+  },
+  {
+    "type": "Orbital",
+    "named": false
+  },
+  {
+    "type": "Page",
+    "named": false
+  },
+  {
+    "type": "Trait",
     "named": false
   },
   {
@@ -1585,12 +2122,12 @@
     "named": false
   },
   {
-    "type": "entity",
+    "type": "emitsScope",
     "named": false
   },
   {
-    "type": "escape_sequence",
-    "named": true
+    "type": "entity",
+    "named": false
   },
   {
     "type": "event_arrow",
@@ -1601,11 +2138,19 @@
     "named": true
   },
   {
+    "type": "events",
+    "named": false
+  },
+  {
     "type": "every",
     "named": false
   },
   {
     "type": "false",
+    "named": false
+  },
+  {
+    "type": "fields",
     "named": false
   },
   {
@@ -1655,6 +2200,10 @@
   {
     "type": "state",
     "named": false
+  },
+  {
+    "type": "string",
+    "named": true
   },
   {
     "type": "ticks",

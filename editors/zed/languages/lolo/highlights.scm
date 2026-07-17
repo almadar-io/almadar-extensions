@@ -28,7 +28,6 @@
 
 ; Strings
 (string) @string
-(escape_sequence) @string.escape
 
 ; Numbers / booleans / null
 (number) @number
@@ -63,6 +62,11 @@
 
 ; State / trait-binding names
 (state_block name: (identifier) @variable)
+(tick_decl name: (identifier) @variable)
+
+; JSX render-element tags and attribute names
+(jsx_tag_name (identifier) @tag)
+(jsx_attribute name: (identifier) @attribute)
 
 ; S-expression call head — the effect/operator name. Generic fallback
 ; first (namespaced runtime calls: math/add, array/map, ...), then the
