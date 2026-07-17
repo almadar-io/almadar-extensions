@@ -139,14 +139,19 @@ module.exports = grammar({
       seq('(', $.type_expr, ')'),
     ),
     type_atom: $ => choice($.identifier, $.string),
+    // `.lolo` object types are newline-separated with an *optional* comma
+    // (see orbital-lolo parser/type.rs — `if Comma { advance }` then
+    // `skip_newlines`). Newlines live in `extras`, so a bare `repeat` of
+    // `field optional(',')` matches both `{ a : T b : U }` and `{ a : T, b : U }`.
     type_object: $ => seq(
       '{',
-      sep(',', seq(field('name', $.identifier), ':', field('type', $.type_expr), optional('!'))),
+      repeat(seq(field('name', $.identifier), ':', field('type', $.type_expr), optional('!'), optional(','))),
       '}',
     ),
 
     // ── Bracket-tag modifiers: [persistent: name], [runtime], [interaction, instance] ──
-    bracket_tags: $ => seq('[', sep1(',', $.bracket_tag), ']'),
+    // Comma-optional, newline-separated (orbital-lolo parser/entity.rs + trait.rs).
+    bracket_tags: $ => seq('[', repeat(seq($.bracket_tag, optional(','))), ']'),
     bracket_tag: $ => choice(
       seq(field('key', $.identifier), ':', field('value', $.identifier)),
       $.identifier,
@@ -192,7 +197,7 @@ module.exports = grammar({
       field('event', $.event_ref),
       $.arrow,
       field('target', $.identifier),
-      optional(seq('when', $.sexpr)),
+      optional(seq('when', $._sexpr_arg)),
       repeat($.sexpr),
     ),
     // Bare EVENT, dotted Trait.EVENT / Source.EVENT (cross-orbital listen
@@ -230,8 +235,18 @@ module.exports = grammar({
       repeat($.annotation),
     ),
 
+    // `ticks { <name> every <interval> [when <guard>]\n  (effect)... }` —
+    // the name is mandatory in the real grammar (parser/trait.rs
+    // `parse_ticks_block`); `when` guard is optional. Comma-less,
+    // newline-separated like everything else.
     ticks_block: $ => seq('ticks', '{', repeat($.tick_decl), '}'),
-    tick_decl: $ => seq('every', choice($.duration, $.string), repeat($.sexpr)),
+    tick_decl: $ => seq(
+      field('name', $.identifier),
+      'every',
+      choice($.duration, $.string),
+      optional(seq('when', $._sexpr_arg)),
+      repeat($.sexpr),
+    ),
 
     with_block: $ => seq('with', '{', repeat($._value), '}'),
 
@@ -241,7 +256,8 @@ module.exports = grammar({
       field('path', $.string),
       optional(seq('as', field('name', $.identifier))),
       $.arrow,
-      field('trait', sep1(',', $.identifier)),
+      // `-> A B` and `-> A, B` both parse (orbital-lolo parser/page.rs).
+      field('trait', seq($.identifier, repeat(seq(optional(','), $.identifier)))),
       optional($.bracket_tags),
     ),
 
@@ -261,12 +277,13 @@ module.exports = grammar({
       $.payload_sigil,
       $.identifier,
     ),
+    // Comma-optional, newline-separated (orbital-lolo parser/expression.rs).
     object_literal: $ => seq(
       '{',
-      sep(',', seq(field('key', choice($.identifier, $.string)), ':', $._sexpr_arg)),
+      repeat(seq(field('key', choice($.identifier, $.string)), ':', $._sexpr_arg, optional(','))),
       '}',
     ),
-    array_literal: $ => seq('[', sep(',', $._sexpr_arg), ']'),
+    array_literal: $ => seq('[', repeat(seq($._sexpr_arg, optional(','))), ']'),
 
     // ── Values / atoms ────────────────────────────────────────────────────
     _value: $ => choice($.string, $.number, $.boolean, $.null),
