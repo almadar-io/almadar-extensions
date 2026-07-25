@@ -38,12 +38,13 @@
   },
   "devDependencies": {
     "tsup": "^8.5.1",
-    "typescript": "^6.0.3",
     "@types/node": "^22.0.0",
     "eslint": "10.6.0",
     "@typescript-eslint/parser": "8.62.1",
     "@almadar/eslint-plugin": "^2.14.0",
-    "turbo": "^2.8.17"
+    "turbo": "^2.8.17",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
   "repository": {
     "type": "git",
