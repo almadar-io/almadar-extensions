@@ -8,7 +8,7 @@
     },
     {
       "name": "keyword.operator.comparison.sexpr",
-      "match": "(?<=\")(!=|<=|>=|=|<|>)(?=\")"
+      "match": "(?<=\")(==|!=|<=|>=|=|<|>)(?=\")"
     },
     {
       "name": "keyword.operator.logical.sexpr",
@@ -87,8 +87,8 @@
       "match": "(?<=\")(os/watch-process|os/watch-signal|os/watch-files|os/watch-port|os/watch-http|os/watch-cron|os/watch-env|os/debounce)(?=\")"
     },
     {
-      "name": "support.function.agent.sexpr",
-      "match": "(?<=\")(agent/memory-strength|agent/switch-provider|agent/context-usage|agent/token-count|agent/search-code|agent/session-id|agent/is-pinned|agent/reinforce|agent/memories|agent/provider|agent/memorize|agent/generate|agent/compact|agent/recall|agent/forget|agent/invoke|agent/model|agent/tools|agent/decay|agent/label|agent/fork|agent/pin)(?=\")"
+      "name": "keyword.other.sexpr",
+      "match": "(?<=\")(integration/github-create-issue|browser/geolocation-current|integration/github-get-repo|workspace/archive-orbital|browser/open-file-picker|compose/compose-children|browser/clipboard-write|workspace/write-orbital|workspace/list-orbitals|browser/clipboard-read|workspace/read-orbital|workspace/write-schema|session/append-history|workspace/read-schema|session/read-analysis|workspace/write-file|workspace/write-plan|session/write-memory|session/read-history|session/write-errors|behavior/instantiate|workspace/read-file|workspace/read-plan|session/read-memory|session/read-errors|compose/compose-all|session/write-spec|session/read-spec|validate/validate|workspace/exists|integration/http|llm/token-count|llm/call-tools|lolo/emit-body|memory/recall|behavior/call|llm/generate|memory/store|llm/compact|memory/list|llm/switch|trace/emit|llm/embed|trace/log)(?=\")"
     },
     {
       "name": "support.function.composition.sexpr",
