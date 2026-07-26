@@ -32,7 +32,7 @@
     },
     {
       "name": "support.function.array.sexpr",
-      "match": "(?<=\")(array/removeItem|array/findIndex|array/partition|array/includes|array/takeLast|array/dropLast|array/prepend|array/reverse|array/shuffle|array/flatten|array/indexOf|array/groupBy|array/empty\\?|array/concat|array/append|array/insert|array/remove|array/unique|array/filter|array/reject|array/reduce|array/range|array/first|array/slice|array/every|array/count|array/last|array/sort|array/find|array/some|array/take|array/drop|array/len|array/nth|array/zip|array/map|array/sum|array/avg|array/min|array/max)(?=\")"
+      "match": "(?<=\")(array/removeItem|array/findIndex|array/partition|array/includes|array/takeLast|array/dropLast|array/prepend|array/reverse|array/shuffle|array/flatten|array/indexOf|array/groupBy|array/nearest|array/empty\\?|array/concat|array/append|array/insert|array/remove|array/unique|array/filter|array/reject|array/reduce|array/cosine|array/range|array/first|array/slice|array/every|array/count|array/last|array/sort|array/find|array/some|array/take|array/drop|array/len|array/nth|array/zip|array/map|array/sum|array/avg|array/min|array/max)(?=\")"
     },
     {
       "name": "support.function.object.sexpr",
