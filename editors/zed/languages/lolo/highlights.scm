@@ -28,7 +28,6 @@
 
 ; Strings
 (string) @string
-(escape_sequence) @string.escape
 
 ; Numbers / booleans / null
 (number) @number
