@@ -15,6 +15,12 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { generateSExprGrammar } from '../src/sexpr-grammar.js';
 import { generateLoloTmLanguage, generateLoloZedHighlights } from '../src/lolo-grammar.js';
+import {
+    generateLoloNvimHighlights,
+    generateOrbNvimHighlights,
+    generateLoloVimSyntax,
+    generateOrbVimSyntax,
+} from '../src/nvim-grammar.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, '..', 'dist');
@@ -44,3 +50,20 @@ console.log(`   → ${loloOutPath}`);
 const loloZedOutPath = join(__dirname, '..', 'editors', 'zed', 'languages', 'lolo', 'highlights.scm');
 writeFileSync(loloZedOutPath, generateLoloZedHighlights(), 'utf-8');
 console.log(`✅ Generated editors/zed/languages/lolo/highlights.scm`);
+
+// Neovim artifacts — read straight from the plugin's runtimepath by Neovim
+// (queries/<lang>/highlights.scm and syntax/<ft>.vim are runtime directories),
+// so they are written into editors/nvim/ and committed, like the Zed query.
+const nvimDir = join(__dirname, '..', 'editors', 'nvim');
+const nvimArtifacts: Array<[string[], string]> = [
+    [['queries', 'lolo', 'highlights.scm'], generateLoloNvimHighlights()],
+    [['queries', 'orb', 'highlights.scm'], generateOrbNvimHighlights()],
+    [['syntax', 'lolo.vim'], generateLoloVimSyntax()],
+    [['syntax', 'orb.vim'], generateOrbVimSyntax()],
+];
+for (const [segments, contents] of nvimArtifacts) {
+    const outPath = join(nvimDir, ...segments);
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, contents, 'utf-8');
+    console.log(`✅ Generated editors/nvim/${segments.join('/')}`);
+}

@@ -1,6 +1,6 @@
 {
   "name": "@almadar/extensions",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "description": "Editor extension utilities for .orb files — virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
@@ -32,15 +32,15 @@
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
-    "@almadar/core": "^10.42.0",
-    "@almadar/std": "^16.152.0",
-    "@almadar/syntax": "^1.13.0"
+    "@almadar/core": "^10.49.0",
+    "@almadar/std": "^16.160.0",
+    "@almadar/syntax": "^1.14.0"
   },
   "devDependencies": {
     "tsup": "^8.5.1",
     "@types/node": "^22.0.0",
     "eslint": "10.6.0",
-    "@typescript-eslint/parser": "8.62.1",
+    "@typescript-eslint/parser": "8.65.0",
     "@almadar/eslint-plugin": "^2.15.0",
     "turbo": "^2.8.17",
     "@typescript/native": "npm:typescript@^7.0.2",

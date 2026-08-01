@@ -291,8 +291,9 @@ export function generateLoloZedHighlights(): string {
 ] @keyword
 
 ; Strings
+; \`string\` is an atomic token in this grammar — no \`string_content\`/
+; \`escape_sequence\` child nodes exist to capture.
 (string) @string
-(escape_sequence) @string.escape
 
 ; Numbers / booleans / null
 (number) @number
@@ -328,21 +329,27 @@ export function generateLoloZedHighlights(): string {
 ; State / trait-binding names
 (state_block name: (identifier) @variable)
 
-; S-expression call head — the effect/operator name. Generic fallback
-; first (namespaced runtime calls: math/add, array/map, ...), then the
-; more specific effect / control-flow predicates below override it.
-(sexpr_op (identifier) @function)
+; S-expression call head — the effect/operator name. It is the FIRST NAMED
+; CHILD of \`sexpr\`, not a \`sexpr_op\`: \`sexpr_op\` only materializes for
+; symbol heads (\`(+ 1 2)\`, \`(= a b)\`) because of the declared
+; \`[sexpr_op, _sexpr_arg]\` GLR conflict — for an identifier head
+; (\`(set …)\`, \`(math/add …)\`, the overwhelmingly common case) the
+; \`_sexpr_arg\` parse wins and the head is a bare \`identifier\`. Anchoring on
+; the first named child covers both shapes. Generic fallback first
+; (namespaced runtime calls: math/add, array/map, ...), then the more
+; specific effect / control-flow predicates below override it.
+(sexpr . (identifier) @function)
 (operator_symbol) @operator
 
 ; Effect operators (set, fetch, persist, emit, render-ui, navigate, ...)
 ; render as keywords, matching .orb's Zed highlighting.
-((sexpr_op (identifier) @keyword)
+((sexpr . (identifier) @keyword)
   (#any-of? @keyword
     ${anyOfArgs(tokens.effectTypes)}))
 
 ; Control-flow / logic s-expr operators (if, and, or, not, let, do, fn, ...)
 ; also render as keywords.
-((sexpr_op (identifier) @keyword)
+((sexpr . (identifier) @keyword)
   (#any-of? @keyword
     ${anyOfArgs(controlAndLogic)}))
 

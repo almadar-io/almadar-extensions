@@ -31,6 +31,16 @@ export {
     type TsDiagnostic,
 } from './diagnostic-mapper.js';
 
+// Neovim artifacts (tree-sitter queries + regex-syntax fallback)
+export {
+    generateLoloNvimHighlights,
+    generateOrbNvimHighlights,
+    generateLoloVimSyntax,
+    generateOrbVimSyntax,
+    loadGrammarNodes,
+    type GrammarNodes,
+} from './nvim-grammar.js';
+
 // S-Expression Grammar
 export {
     generateSExprGrammar,
