@@ -7,6 +7,7 @@
   "orbital"
   "uses"
   "from"
+  "expects"
   "entity"
   "type"
   "derived"

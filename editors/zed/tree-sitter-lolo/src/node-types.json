@@ -648,6 +648,67 @@
     }
   },
   {
+    "type": "expects_decl",
+    "named": true,
+    "fields": {
+      "event": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "trait": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "expects_shape",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "expects_shape",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "entity_field",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "field_annotation",
     "named": true,
     "fields": {},
@@ -979,6 +1040,10 @@
       "types": [
         {
           "type": "entity",
+          "named": true
+        },
+        {
+          "type": "expects_decl",
           "named": true
         },
         {
@@ -2130,6 +2195,10 @@
     "named": false
   },
   {
+    "type": "event",
+    "named": false
+  },
+  {
     "type": "event_arrow",
     "named": true
   },
@@ -2143,6 +2212,10 @@
   },
   {
     "type": "every",
+    "named": false
+  },
+  {
+    "type": "expects",
     "named": false
   },
   {
@@ -2164,6 +2237,10 @@
   {
     "type": "identifier",
     "named": true
+  },
+  {
+    "type": "identity",
+    "named": false
   },
   {
     "type": "initial",

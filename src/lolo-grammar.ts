@@ -271,6 +271,7 @@ export function generateLoloZedHighlights(): string {
   "orbital"
   "uses"
   "from"
+  "expects"
   "entity"
   "type"
   "derived"

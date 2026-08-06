@@ -112,6 +112,7 @@ module.exports = grammar({
     ),
     _orbital_item: $ => choice(
       $.use_decl,
+      $.expects_decl,
       $.type_alias,
       $.entity,
       $.trait,
@@ -121,6 +122,19 @@ module.exports = grammar({
     type_annotation: $ => seq('::', $.identifier),
 
     use_decl: $ => seq('uses', field('alias', $.identifier), 'from', field('path', $.string)),
+
+    // `expects` — consumer-side requirement declarations
+    // (docs/Almadar_LOLO_Expects_Proposal.md §3). The shape reuses the §6
+    // entity field-declaration grammar verbatim.
+    expects_decl: $ => seq(
+      'expects',
+      choice(
+        seq('identity', optional(field('name', $.identifier)), optional($.expects_shape)),
+        seq('entity', field('name', $.identifier), optional($.expects_shape)),
+        seq('event', field('trait', $.identifier), '.', field('event', $.identifier)),
+      ),
+    ),
+    expects_shape: $ => seq('{', repeat1($.entity_field), '}'),
 
     // ── Entity ────────────────────────────────────────────────────────────
     entity: $ => seq(
