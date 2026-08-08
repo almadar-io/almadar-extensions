@@ -24,7 +24,8 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { jsonPathToPosition } from './json-path.js';
 import { PreviewServer } from './preview/preview-server.js';
-import { execFile, execFileSync } from 'child_process';
+import { resolveOrbBinary as resolveOrbBinaryPure } from './binary-resolution.js';
+import { execFile } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -48,6 +49,9 @@ const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 // Workspace root (resolved on initialization)
 let workspaceRoot: string | null = null;
 
+// orb binary override from LSP initializationOptions (env var ORB_BIN takes precedence)
+let orbBinFromInitOptions: string | null = null;
+
 // RTL preview server (HTTP + WebSocket)
 const previewServer = new PreviewServer((msg) => connection.console.log(msg));
 
@@ -66,6 +70,12 @@ connection.onInitialize((params: InitializeParams) => {
         workspaceRoot = params.rootPath;
     }
     connection.console.log(`OrbLSP initialized. Workspace root: ${workspaceRoot}`);
+
+    // initializationOptions is LSP's LSPAny (client-supplied, untyped by spec)
+    const initOptions = params.initializationOptions;
+    if (initOptions && typeof initOptions === 'object' && typeof initOptions.orbBin === 'string') {
+        orbBinFromInitOptions = initOptions.orbBin;
+    }
 
     // Start the preview server (non-blocking)
     previewServer.start().then((port) => {
@@ -125,67 +135,29 @@ interface ValidateResult {
 // Binary Resolution
 // ============================================================================
 
-// The published, actively-maintained CLI is @almadar/orb (bin: "orb") — NOT
-// @almadar/cli (bin: "almadar"), which is a stale, unmaintained package that
-// predates .lolo support. Confirmed live: @almadar/orb correctly returns
-// LOLO_PARSE_ERROR with a real <input>:LINE:COL locator; @almadar/cli just
-// tries JSON.parse on .lolo source and reports a generic JSON_PARSE_ERROR.
-const BINARY_NAME = process.platform === 'win32' ? 'orb.exe' : 'orb';
-const PLATFORM_PACKAGE: Record<string, string> = {
-    'darwin-x64': '@almadar/orb-darwin-x64',
-    'darwin-arm64': '@almadar/orb-darwin-arm64',
-    'linux-x64': '@almadar/orb-linux-x64',
-    'linux-arm64': '@almadar/orb-linux-arm64',
-    'win32-x64': '@almadar/orb-windows-x64',
-};
+// Resolution logic lives in binary-resolution.ts (no `connection` dependency,
+// so it's directly unit-testable). This wrapper supplies the real env var,
+// workspace root, require.resolve, and logger, and owns the result cache.
 
 let _cachedBinaryPath: string | null | undefined;
 
 function resolveOrbBinary(): string | null {
     if (_cachedBinaryPath !== undefined) return _cachedBinaryPath;
 
-    const packageName = PLATFORM_PACKAGE[`${process.platform}-${process.arch}`];
-    if (!packageName) {
-        _cachedBinaryPath = null;
-        return null;
+    const resolved = resolveOrbBinaryPure({
+        orbBinOverride: process.env.ORB_BIN ?? orbBinFromInitOptions,
+        workspaceRoot,
+        extraSearchRoots: [process.cwd(), path.dirname(import.meta.url.replace('file://', ''))],
+        // `require` is provided by tsup banner via createRequire(import.meta.url)
+        requireResolve: (id) => require.resolve(id),
+        logger: { warn: (message) => connection.console.warn(message) },
+    });
+
+    _cachedBinaryPath = resolved ? resolved.path : null;
+    if (resolved) {
+        connection.console.info(`OrbLSP: resolved orb binary via ${resolved.strategy}: ${resolved.path}`);
     }
-
-    // Strategy 1: require.resolve to find the platform package
-    // Note: `require` is provided by tsup banner via createRequire(import.meta.url)
-    try {
-        const pkgJson = require.resolve(`${packageName}/package.json`);
-        const binaryPath = path.join(path.dirname(pkgJson), BINARY_NAME);
-        if (fs.existsSync(binaryPath)) {
-            _cachedBinaryPath = binaryPath;
-            return binaryPath;
-        }
-    } catch { /* not found via require */ }
-
-    // Strategy 2: Walk up node_modules from workspace root
-    const searchRoots = [workspaceRoot, process.cwd(), path.dirname(import.meta.url.replace('file://', ''))].filter(Boolean) as string[];
-    for (const root of searchRoots) {
-        let dir = root;
-        for (let i = 0; i < 6; i++) {
-            const candidate = path.join(dir, 'node_modules', packageName, BINARY_NAME);
-            if (fs.existsSync(candidate)) {
-                _cachedBinaryPath = candidate;
-                return candidate;
-            }
-            const parent = path.dirname(dir);
-            if (parent === dir) break;
-            dir = parent;
-        }
-    }
-
-    // Strategy 3: Check if 'orb' is on PATH
-    try {
-        execFileSync('orb', ['--version'], { timeout: 5000, stdio: 'ignore' });
-        _cachedBinaryPath = 'orb';
-        return 'orb';
-    } catch { /* not on PATH */ }
-
-    _cachedBinaryPath = null;
-    return null;
+    return _cachedBinaryPath;
 }
 
 function runValidate(filePath: string): Promise<ValidateResult> {
@@ -199,7 +171,7 @@ function runValidate(filePath: string): Promise<ValidateResult> {
                 errors: [{
                     code: 'CLI_NOT_FOUND',
                     path: '',
-                    message: 'Orb CLI binary not found. Install with: npm install -g @almadar/orb',
+                    message: 'Orb CLI binary not found. Set ORB_BIN to an absolute path, put `orb` on PATH, or install with: npm install -g @almadar/orb',
                 }],
             });
             return;

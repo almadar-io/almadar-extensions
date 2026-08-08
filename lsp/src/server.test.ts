@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { jsonPathToPosition } from './json-path.js';
+import { resolveOrbBinary } from './binary-resolution.js';
 import { execFileSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 
 const ROOT = path.resolve(__dirname, '../../../../');
 // lsp/'s own package dir — running npx with this as cwd lets it resolve
@@ -58,6 +60,122 @@ describe('jsonPathToPosition', () => {
     it('should find deeply nested "orbitals[0].traits[0].name"', () => {
         const pos = jsonPathToPosition(simpleJson, 'orbitals[0].traits[0].name');
         expect(pos.line).toBe(7);
+    });
+});
+
+// ============================================================================
+// Unit tests for resolveOrbBinary (binary-resolution.ts)
+// ============================================================================
+
+function writeFakeExecutable(filePath: string): void {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+}
+
+describe('resolveOrbBinary', () => {
+    const ORIGINAL_PATH = process.env.PATH;
+    const ORIGINAL_ORB_BIN = process.env.ORB_BIN;
+    let tmpBase: string | undefined;
+
+    function makeTmpDir(): string {
+        tmpBase = fs.mkdtempSync(path.join(os.tmpdir(), 'orb-lsp-test-'));
+        return tmpBase;
+    }
+
+    afterEach(() => {
+        if (ORIGINAL_PATH === undefined) delete process.env.PATH; else process.env.PATH = ORIGINAL_PATH;
+        if (ORIGINAL_ORB_BIN === undefined) delete process.env.ORB_BIN; else process.env.ORB_BIN = ORIGINAL_ORB_BIN;
+        vi.restoreAllMocks();
+        if (tmpBase) fs.rmSync(tmpBase, { recursive: true, force: true });
+        tmpBase = undefined;
+    });
+
+    it('ORB_BIN/orbBin override wins outright even when a valid orb is also on PATH', () => {
+        const dir = makeTmpDir();
+        const fakeOverride = path.join(dir, 'orb-override');
+        writeFakeExecutable(fakeOverride);
+
+        const pathDir = path.join(dir, 'path-bin');
+        writeFakeExecutable(path.join(pathDir, 'orb'));
+        process.env.PATH = pathDir;
+
+        const result = resolveOrbBinary({ orbBinOverride: fakeOverride });
+        expect(result).toEqual({ path: fakeOverride, strategy: 'ORB_BIN/orbBin override' });
+    });
+
+    it('warns and falls through when the override points at a missing file', () => {
+        const dir = makeTmpDir();
+        const missing = path.join(dir, 'does-not-exist');
+        const pathDir = path.join(dir, 'path-bin');
+        writeFakeExecutable(path.join(pathDir, 'orb'));
+        process.env.PATH = pathDir;
+
+        const warnings: string[] = [];
+        const result = resolveOrbBinary({ orbBinOverride: missing, logger: { warn: (m) => warnings.push(m) } });
+
+        expect(result).toEqual({ path: 'orb', strategy: 'PATH' });
+        expect(warnings).toHaveLength(1);
+        expect(warnings[0]).toContain(missing);
+    });
+
+    it('PATH beats the npm platform package', () => {
+        const dir = makeTmpDir();
+        const pathDir = path.join(dir, 'path-bin');
+        writeFakeExecutable(path.join(pathDir, 'orb'));
+        process.env.PATH = pathDir;
+
+        const requireResolve = vi.fn(() => { throw new Error('should not be called — PATH must win first'); });
+        const result = resolveOrbBinary({ requireResolve });
+
+        expect(result).toEqual({ path: 'orb', strategy: 'PATH' });
+        expect(requireResolve).not.toHaveBeenCalled();
+    });
+
+    it('falls back to a well-known local dir when PATH has no orb', () => {
+        const dir = makeTmpDir();
+        const emptyPathDir = path.join(dir, 'empty-path-bin');
+        fs.mkdirSync(emptyPathDir, { recursive: true });
+        process.env.PATH = emptyPathDir;
+
+        const fakeHome = path.join(dir, 'home');
+        const wellKnownBinary = path.join(fakeHome, 'bin', 'orb');
+        writeFakeExecutable(wellKnownBinary);
+
+        const result = resolveOrbBinary({ homedir: () => fakeHome });
+        expect(result).toEqual({ path: wellKnownBinary, strategy: 'well-known local dir' });
+    });
+
+    it('falls through to the npm platform package as the last resort', () => {
+        const dir = makeTmpDir();
+        const emptyPathDir = path.join(dir, 'empty-path-bin');
+        fs.mkdirSync(emptyPathDir, { recursive: true });
+        process.env.PATH = emptyPathDir;
+
+        const fakeHome = path.join(dir, 'home-without-orb');
+        fs.mkdirSync(fakeHome, { recursive: true });
+
+        const pkgDir = path.join(dir, 'node_modules', '@almadar', 'orb-fake-platform');
+        const pkgJson = path.join(pkgDir, 'package.json');
+        const binaryPath = path.join(pkgDir, 'orb');
+        fs.mkdirSync(pkgDir, { recursive: true });
+        fs.writeFileSync(pkgJson, '{}');
+        writeFakeExecutable(binaryPath);
+
+        const result = resolveOrbBinary({ homedir: () => fakeHome, requireResolve: () => pkgJson });
+        expect(result).toEqual({ path: binaryPath, strategy: 'npm platform package' });
+    });
+
+    it('returns null when nothing resolves', () => {
+        const dir = makeTmpDir();
+        const emptyPathDir = path.join(dir, 'empty-path-bin');
+        fs.mkdirSync(emptyPathDir, { recursive: true });
+        process.env.PATH = emptyPathDir;
+
+        const fakeHome = path.join(dir, 'home-without-orb');
+        fs.mkdirSync(fakeHome, { recursive: true });
+
+        const result = resolveOrbBinary({ homedir: () => fakeHome });
+        expect(result).toBeNull();
     });
 });
 
