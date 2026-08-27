@@ -29,6 +29,9 @@
         "@types/ws": "^8.18.1",
         "tsup": "^8.5.1"
     },
+    "overrides": {
+        "three": "^0.160.1"
+    },
     "files": [
         "dist",
         "bin"

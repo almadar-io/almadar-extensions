@@ -1,6 +1,6 @@
 {
   "name": "@almadar/extensions",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "description": "Editor extension utilities for .orb files — virtual document wrapper and S-expression grammar generator",
   "type": "module",
   "main": "./dist/index.js",
@@ -24,16 +24,16 @@
     "build:core": "tsup && pnpm run generate-grammar",
     "build:watch": "tsup --watch",
     "build:editors": "pnpm run build:lsp && pnpm run build:vscode && pnpm run build:zed",
-    "build:vscode": "cd editors/vscode && npm install --ignore-scripts 2>/dev/null; node esbuild.js && cp ../../dist/sexpr.injection.json syntaxes/sexpr.injection.json && cp ../../dist/lolo.tmLanguage.json syntaxes/lolo.tmLanguage.json && cp ../../lsp/dist/server.js dist/server.js",
+    "build:vscode": "cd editors/vscode && npm install --ignore-scripts --loglevel=error && node esbuild.js && cp ../../dist/sexpr.injection.json syntaxes/sexpr.injection.json && cp ../../dist/lolo.tmLanguage.json syntaxes/lolo.tmLanguage.json && cp ../../lsp/dist/server.js dist/server.js",
     "build:zed": "mkdir -p editors/zed/syntaxes && cp dist/sexpr.injection.json editors/zed/syntaxes/sexpr.injection.json",
-    "build:lsp": "cd lsp && npm install --ignore-scripts 2>/dev/null; npx tsup",
+    "build:lsp": "cd lsp && npm install --ignore-scripts --loglevel=error && npx tsup",
     "typecheck": "tsc --noEmit",
     "generate-grammar": "tsx scripts/build-grammars.ts",
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
-    "@almadar/core": "^10.57.0",
-    "@almadar/std": "^16.171.0",
+    "@almadar/core": "^10.70.0",
+    "@almadar/std": "^16.188.0",
     "@almadar/syntax": "^1.15.0"
   },
   "devDependencies": {
