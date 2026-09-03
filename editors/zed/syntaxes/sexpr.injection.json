@@ -20,7 +20,7 @@
     },
     {
       "name": "keyword.other.effect.sexpr",
-      "match": "(?<=\")(fetch-stream|call-service|send-server|render-ui|navigate|persist|despawn|notify|spawn|fetch|emit|set|log|ref)(?=\")"
+      "match": "(?<=\")(navigate-back|fetch-stream|call-service|send-server|render-ui|navigate|persist|despawn|notify|spawn|fetch|emit|set|log|ref)(?=\")"
     },
     {
       "name": "support.function.math.sexpr",
@@ -88,7 +88,7 @@
     },
     {
       "name": "keyword.other.sexpr",
-      "match": "(?<=\")(integration/github-create-issue|browser/geolocation-current|integration/github-get-repo|workspace/archive-orbital|browser/open-file-picker|compose/compose-children|browser/clipboard-write|workspace/write-orbital|workspace/list-orbitals|browser/clipboard-read|workspace/read-orbital|workspace/write-schema|session/append-history|workspace/read-schema|session/read-analysis|workspace/write-file|workspace/write-plan|session/write-memory|session/read-history|session/write-errors|behavior/instantiate|workspace/read-file|workspace/read-plan|session/read-memory|session/read-errors|compose/compose-all|session/write-spec|session/read-spec|validate/validate|workspace/exists|integration/http|llm/token-count|llm/call-tools|lolo/emit-body|memory/recall|behavior/call|llm/generate|memory/store|llm/compact|memory/list|llm/switch|trace/emit|llm/embed|trace/log)(?=\")"
+      "match": "(?<=\")(integration/github-create-issue|browser/geolocation-current|integration/github-get-repo|workspace/archive-orbital|browser/open-file-picker|compose/compose-children|browser/clipboard-write|workspace/write-orbital|workspace/list-orbitals|browser/clipboard-read|browser/push-subscribe|workspace/read-orbital|workspace/write-schema|session/append-history|workspace/read-schema|session/read-analysis|workspace/write-file|workspace/write-plan|session/write-memory|session/read-history|session/write-errors|behavior/instantiate|workspace/read-file|workspace/read-plan|session/read-memory|session/read-errors|compose/compose-all|session/write-spec|session/read-spec|validate/validate|workspace/exists|integration/http|llm/token-count|llm/call-tools|lolo/emit-body|memory/recall|behavior/call|llm/generate|memory/store|llm/compact|memory/list|llm/switch|trace/emit|llm/embed|trace/log)(?=\")"
     },
     {
       "name": "support.function.composition.sexpr",
