@@ -5,6 +5,11 @@
 # Lockfile refresh is owned by almadar-pattern-sync (the cascade's syncLockfile),
 # NOT by this hook. Do not regenerate or `git add` lockfiles here.
 
+# Zed: highlights.scm must match the grammar's node-types.json. The pin check
+# is CI-only (--skip-pin here) — a grammar commit cannot pin its own sha.
+STAGED_ZED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^editors/zed/' || true)
+[ -n "$STAGED_ZED" ] && { pnpm run check:zed --skip-pin || { echo "Commit blocked: Zed highlights query does not match the grammar."; exit 1; }; }
+
 STAGED_TS=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' | grep -v '^archive/' || true)
 [ -z "$STAGED_TS" ] && exit 0
 

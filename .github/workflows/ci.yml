@@ -31,6 +31,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Not inside `build` — its trailing `|| true` swallows editor failures
+      # (docs/Almadar_Extensions_Gaps.md X-2). Zed refuses the whole .lolo
+      # language when highlights.scm and the pinned grammar disagree (X-1).
+      - name: Check Zed extension
+        run: pnpm run check:zed
+
       - name: Test
         run: pnpm run --if-present test
 
