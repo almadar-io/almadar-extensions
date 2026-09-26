@@ -45,7 +45,8 @@
     "@almadar/eslint-plugin": "^2.19.0",
     "turbo": "^2.8.17",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "typescript": "npm:@typescript/typescript6@^6.0.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "tsx": "^4.7.0"
   },
   "repository": {
     "type": "git",

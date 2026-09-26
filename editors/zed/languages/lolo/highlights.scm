@@ -89,6 +89,7 @@
     "fetch-stream"
     "log"
     "navigate"
+    "navigate-back"
     "notify"
     "persist"
     "ref"
