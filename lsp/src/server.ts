@@ -19,12 +19,15 @@ import {
     TextDocumentSyncKind,
     Diagnostic,
     DiagnosticSeverity,
+    CompletionItem,
+    TextDocumentPositionParams,
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { jsonPathToPosition } from './json-path.js';
 import { PreviewServer } from './preview/preview-server.js';
 import { resolveOrbBinary as resolveOrbBinaryPure } from './binary-resolution.js';
+import { byteOffsetOf, completeArgs, parseCompleteOutput, toCompletionItems } from './completion.js';
 import { execFile } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -93,6 +96,7 @@ connection.onInitialize((params: InitializeParams) => {
     return {
         capabilities: {
             textDocumentSync: TextDocumentSyncKind.Full,
+            completionProvider: { triggerCharacters: ['(', '<', '"', '/', '.', '@'] },
         },
     };
 });
@@ -159,6 +163,34 @@ function resolveOrbBinary(): string | null {
     }
     return _cachedBinaryPath;
 }
+
+/** `.lolo` completion from `orb complete` over the unsaved buffer (resolved from the document's folder). */
+function runComplete(uri: string, text: string, params: TextDocumentPositionParams, offset: number): Promise<CompletionItem[]> {
+    const binaryPath = resolveOrbBinary();
+    if (!binaryPath) return Promise.resolve([]);
+    const filePath = decodeURIComponent(uri.replace('file://', ''));
+    return new Promise((resolve) => {
+        const child = execFile(binaryPath, completeArgs(byteOffsetOf(text, offset)), {
+            cwd: workspaceRoot ?? path.dirname(filePath),
+            timeout: 10_000,
+            maxBuffer: 4 * 1024 * 1024,
+        }, (error, stdout, stderr) => {
+            try {
+                resolve(toCompletionItems(parseCompleteOutput(stdout), params.position));
+            } catch (parseError) {
+                connection.console.error(`OrbLSP: orb complete failed: ${error?.message ?? stderr} (${String(parseError)})`);
+                resolve([]);
+            }
+        });
+        child.stdin?.end(text);
+    });
+}
+
+connection.onCompletion((params): Promise<CompletionItem[]> => {
+    const doc = documents.get(params.textDocument.uri);
+    if (!doc || !doc.uri.toLowerCase().endsWith('.lolo')) return Promise.resolve([]);
+    return runComplete(doc.uri, doc.getText(), params, doc.offsetAt(params.position));
+});
 
 function runValidate(filePath: string): Promise<ValidateResult> {
     return new Promise((resolve) => {

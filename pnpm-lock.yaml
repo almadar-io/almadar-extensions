@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@almadar/core':
-        specifier: ^10.105.0
-        version: 10.105.0
+        specifier: ^10.108.0
+        version: 10.108.0
       '@almadar/std':
-        specifier: ^16.230.0
-        version: 16.230.0
+        specifier: ^16.233.0
+        version: 16.233.0
       '@almadar/syntax':
         specifier: ^1.19.0
         version: 1.19.0
@@ -48,16 +48,16 @@ importers:
 
 packages:
 
-  '@almadar/core@10.105.0':
-    resolution: {integrity: sha512-k+CYU/zoWy7TNxgFdfCLCu45u/S0PkUnt/n6AmvOKYGowoWk/14lbWUH/aZQFcukpOAzjGT3kCj2LjecFOHF7Q==}
+  '@almadar/core@10.108.0':
+    resolution: {integrity: sha512-5Q3LuL2ORjsOZ+0mTL60e5S+6leDccydfRI0LuRct/qtFCc4rKesbru9OMKAQG6ns1JAuJ37MRi9AASKfrFOKg==}
 
   '@almadar/eslint-plugin@2.20.0':
     resolution: {integrity: sha512-f3kUaZqFJYC38tL/FZxEel2cm//288/MbCYCykyHFtie33XHQPyVyocrjyP8XQsbt+SlZ22X3tzo313/y2yKIg==}
     peerDependencies:
       eslint: '>=8.0.0'
 
-  '@almadar/std@16.230.0':
-    resolution: {integrity: sha512-7960K22CbgtzpwFIcqZc4RqAt2NJuZkBCb62Vxt/4maHgj1kBw1elStXVJrFSwH+vGSB/Or5nxS/NEvRyrJvMw==}
+  '@almadar/std@16.233.0':
+    resolution: {integrity: sha512-ejVOCAoIZDw+MUVWbbHOQa9kRE6aep4vx2o8Zp3bce1aQ30ZU7l+x4VVYvw60DFKKH+f6J0d3mtHohtHoJjItA==}
 
   '@almadar/syntax@1.19.0':
     resolution: {integrity: sha512-mfH7aFAvIVQZdfIlx9QQVwf2JytJ/twGdiZEw6b7es5hto9pPhy65Da4/Vca9S94ikwT1N0z156ET5ndKmHx/A==}
@@ -1219,7 +1219,7 @@ packages:
 
 snapshots:
 
-  '@almadar/core@10.105.0':
+  '@almadar/core@10.108.0':
     dependencies:
       zod: 3.25.76
 
@@ -1228,14 +1228,14 @@ snapshots:
       eslint: 10.6.0
       jsonc-eslint-parser: 3.1.0
 
-  '@almadar/std@16.230.0':
+  '@almadar/std@16.233.0':
     dependencies:
-      '@almadar/core': 10.105.0
+      '@almadar/core': 10.108.0
 
   '@almadar/syntax@1.19.0':
     dependencies:
-      '@almadar/core': 10.105.0
-      '@almadar/std': 16.230.0
+      '@almadar/core': 10.108.0
+      '@almadar/std': 16.233.0
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true
