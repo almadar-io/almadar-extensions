@@ -137,6 +137,18 @@
               "type": "BLANK"
             }
           ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "bracket_tags"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },
@@ -1095,8 +1107,29 @@
               "type": "FIELD",
               "name": "value",
               "content": {
-                "type": "SYMBOL",
-                "name": "identifier"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "identifier"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "string"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "array_literal"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "sexpr"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "object_literal"
+                  }
+                ]
               }
             }
           ]

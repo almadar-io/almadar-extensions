@@ -62,6 +62,9 @@ module.exports = grammar({
     // second string is the description. Structured as one linear choice (not
     // two independently-optional string fields) so there's no ambiguity over
     // which string a lone string token belongs to.
+    // Modifiers (description, theme, locales, public, origin, icon, siteName,
+    // signIn) go in the `[ … ]` bracket; the pre-bracket form (a bare
+    // description string after the version) still parses.
     app_header: $ => seq(
       'app',
       field('name', $.identifier),
@@ -69,6 +72,7 @@ module.exports = grammar({
         field('version', $.version_tag),
         seq(field('version', $.string), optional(field('description', $.string))),
       )),
+      optional($.bracket_tags),
     ),
     version_tag: $ => /v[0-9][a-zA-Z0-9_.-]*/,
 
@@ -203,8 +207,11 @@ module.exports = grammar({
     // ── Bracket-tag modifiers: [persistent: name], [runtime], [interaction, instance] ──
     // Comma-optional, newline-separated (orbital-lolo parser/entity.rs + trait.rs).
     bracket_tags: $ => seq('[', repeat(seq($.bracket_tag, optional(','))), ']'),
+    // `key: value` modifiers (app header, page) or bare tags/flags. A value is
+    // a word, a string, a list (`locales: [en, ar]`) or an s-expression
+    // (`title: (i18n/t "key")`).
     bracket_tag: $ => choice(
-      seq(field('key', $.identifier), ':', field('value', $.identifier)),
+      seq(field('key', $.identifier), ':', field('value', choice($.identifier, $.string, $.array_literal, $.sexpr, $.object_literal))),
       $.identifier,
     ),
 

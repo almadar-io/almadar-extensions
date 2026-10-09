@@ -56,6 +56,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "bracket_tags",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -146,7 +156,23 @@
         "required": false,
         "types": [
           {
+            "type": "array_literal",
+            "named": true
+          },
+          {
             "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "object_literal",
+            "named": true
+          },
+          {
+            "type": "sexpr",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           }
         ]

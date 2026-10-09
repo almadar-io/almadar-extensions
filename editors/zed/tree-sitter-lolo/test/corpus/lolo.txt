@@ -348,3 +348,46 @@ orbital O {
         type: (type_expr
           (type_atom
             (identifier)))))))
+
+==================
+App header modifier bracket and page modifiers
+==================
+
+app shop "1.0.0" [
+  description: "A shop",
+  theme: "clay-light",
+  locales: [en, ar],
+  signIn: "/login"
+]
+orbital O {
+  entity E { id : string! }
+  page "/" as Home -> View [access: public, indexing: index, title: (i18n/t "meta.home")]
+}
+
+---
+
+(source_file
+  (app_header
+    name: (identifier)
+    version: (string)
+    (bracket_tags
+      (bracket_tag key: (identifier) value: (string))
+      (bracket_tag key: (identifier) value: (string))
+      (bracket_tag key: (identifier) value: (array_literal (identifier) (identifier)))
+      (bracket_tag key: (identifier) value: (string))))
+  (orbital
+    name: (identifier)
+    (entity
+      name: (identifier)
+      (entity_field
+        name: (identifier)
+        type: (type_expr (type_atom (identifier)))))
+    (page
+      path: (string)
+      name: (identifier)
+      (arrow)
+      trait: (identifier)
+      (bracket_tags
+        (bracket_tag key: (identifier) value: (identifier))
+        (bracket_tag key: (identifier) value: (identifier))
+        (bracket_tag key: (identifier) value: (sexpr (identifier) (string)))))))
