@@ -12,8 +12,8 @@ importers:
         specifier: ^10.128.0
         version: 10.128.0
       '@almadar/std':
-        specifier: ^16.253.0
-        version: 16.253.0
+        specifier: ^16.254.0
+        version: 16.254.0
       '@almadar/syntax':
         specifier: ^1.21.0
         version: 1.21.0
@@ -58,8 +58,8 @@ packages:
     peerDependencies:
       eslint: '>=8.0.0'
 
-  '@almadar/std@16.253.0':
-    resolution: {integrity: sha512-unc/3+ZUEZ9IC6LuyWxhQgP7TkpEc5j4YqdWYOznsWXnBd5qY4dVIe2K4wxR0H7+V1pRL1H/LQOA5G9YLAw5cA==}
+  '@almadar/std@16.254.0':
+    resolution: {integrity: sha512-NWvbnvnuObslknnoJEzLJB0GQ4a2qP+/+9I3Mda2BfU+4ANAPr5fvP4LaMQYe3JvXBsFIbx4mek+m/40uHYkhg==}
     engines: {node: '>=22'}
 
   '@almadar/syntax@1.21.0':
@@ -1232,14 +1232,14 @@ snapshots:
       eslint: 10.6.0
       jsonc-eslint-parser: 3.1.0
 
-  '@almadar/std@16.253.0':
+  '@almadar/std@16.254.0':
     dependencies:
       '@almadar/core': 10.128.0
 
   '@almadar/syntax@1.21.0':
     dependencies:
       '@almadar/core': 10.128.0
-      '@almadar/std': 16.253.0
+      '@almadar/std': 16.254.0
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true
